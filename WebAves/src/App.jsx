@@ -12,9 +12,9 @@ export default function App() {
 
   switch (pantalla) {
     case 'juego':
-      return window.open("/aviario.html", "_self")
+      return window.open("./aviario.html", "_self")
     case 'coleccion':
-      return window.open("/Enciclopedia.html", "_self") //ni idea si funcione la verdad
+      return window.open("./Enciclopedia.html", "_self") //ni idea si funcione la verdad
     case 'logros':
       return <Pendiente titulo="Logros" onVolver={volver} />
     default:
