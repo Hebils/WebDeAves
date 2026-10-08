@@ -1,14 +1,14 @@
 // Pantalla inicial. Sigue el boceto: título (imagen), descripción,
 // INICIAR / COLECCIÓN / LOGROS y logo UAO abajo.
 const TITULO_IMG = null // cuando tengas la imagen: 'img/titulo.png'
-const LETRAS = 'WebAves'.split('')
+const LETRAS = 'AviUAO'.split('')
 
 // ---------- Capas de aves (profundidad / parallax) ----------
 // Para tener más o menos aves, cambia "n". Para otra capa, agrega un objeto.
 const CAPAS = [
   { nombre: 'lejos', n: 7, ancho: [20, 28], opacidad: 0.12, duracion: [40, 55], top: [4, 88], blur: 0 },
   { nombre: 'medio', n: 5, ancho: [34, 46], opacidad: 0.22, duracion: [26, 36], top: [8, 85], blur: 0 },
-  { nombre: 'cerca', n: 3, ancho: [64, 84], opacidad: 0.3,  duracion: [14, 20], top: [10, 80], blur: 1.5 },
+  { nombre: 'cerca', n: 3, ancho: [64, 84], opacidad: 0.3, duracion: [14, 20], top: [10, 80], blur: 1.5 },
 ]
 
 // Números "al azar" pero fijos (así las aves no cambian al volver a renderizar)
@@ -79,7 +79,7 @@ export default function Inicio({ onNavegar }) {
                 <span className="letra" style={{ '--i': i }} key={i}>{l}</span>
               ))}
             </span>
-            <span className="titulo__sub" aria-hidden="true">UAO</span>
+            {/* <span className="titulo__sub" aria-hidden="true">UAO</span> */}
           </h1>
         )}
       </header>

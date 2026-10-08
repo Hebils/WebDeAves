@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Inicio from './screens/Inicio.jsx'
 import Pendiente from './screens/Pendiente.jsx'
+import Aviario from './aviarioHtml.jsx'
 import './App.css'
 
 // Navegación por estado (sin react-router) -> cero problemas en GitHub Pages.
@@ -10,7 +11,7 @@ export default function App() {
 
   switch (pantalla) {
     case 'juego':
-      return <Pendiente titulo="Recorrido AR" onVolver={volver} />
+      return window.open("/aviario.html", "_self")
     case 'coleccion':
       return <Pendiente titulo="Colección" onVolver={volver} />
     case 'logros':

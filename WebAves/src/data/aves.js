@@ -10,7 +10,7 @@
 
 export const AVES = [
   {
-    id: 'curucutu',
+    id: 'currucutu',
     nombre: 'Currucutú',
     cientifico: 'Megascops choliba',
     familia: 'Strigidae',

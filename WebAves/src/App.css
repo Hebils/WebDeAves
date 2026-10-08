@@ -12,8 +12,16 @@
   text-align: center;
   overflow: hidden;
 }
-.inicio--simple { justify-content: center; gap: 2rem; }
-.inicio > *:not(.cielo) { position: relative; z-index: 1; }
+
+.inicio--simple {
+  justify-content: center;
+  gap: 2rem;
+}
+
+.inicio>*:not(.cielo) {
+  position: relative;
+  z-index: 1;
+}
 
 /* ---------- Título: el recuadro se dibuja y las letras caen ---------- */
 .titulo {
@@ -21,7 +29,11 @@
   width: min(100%, 420px);
   padding: 1.6rem 1rem 1.3rem;
 }
-.titulo__img { width: 100%; display: block; }
+
+.titulo__img {
+  width: 100%;
+  display: block;
+}
 
 .marco {
   position: absolute;
@@ -30,6 +42,7 @@
   height: 100%;
   overflow: visible;
 }
+
 .marco rect {
   width: calc(100% - 4px);
   height: calc(100% - 4px);
@@ -39,7 +52,11 @@
   animation: dibujar 1s ease-out backwards;
 }
 
-.titulo h1 { margin: 0; line-height: 1; }
+.titulo h1 {
+  margin: 0;
+  line-height: 1;
+}
+
 .titulo__palabra {
   display: block;
   font-size: clamp(2.2rem, 11.5vw, 3.8rem);
@@ -47,11 +64,13 @@
   letter-spacing: .02em;
   white-space: nowrap;
 }
+
 .letra {
   display: inline-block;
   animation: caer .7s cubic-bezier(.34, 1.56, .64, 1) backwards;
   animation-delay: calc(.6s + var(--i) * .07s);
 }
+
 .titulo__sub {
   display: block;
   margin-top: .3rem;
@@ -78,6 +97,7 @@
   flex-direction: column;
   gap: 1.1rem;
 }
+
 .btn {
   position: relative;
   min-height: 56px;
@@ -93,15 +113,35 @@
   transition: transform .08s, box-shadow .08s;
   animation: pop .55s cubic-bezier(.34, 1.56, .64, 1) var(--d, 0s) backwards;
 }
-.btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #3d000a; }
-.btn:focus-visible { outline: 3px solid var(--acento); outline-offset: 3px; }
+
+.btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #3d000a;
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 3px;
+}
+
 @media (hover: hover) {
-  .btn:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #3d000a; }
-  .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 #3d000a; }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 0 #3d000a;
+  }
+
+  .btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #3d000a;
+  }
 }
 
 /* INICIAR late para invitar a tocar */
-.btn--principal { min-height: 70px; font-size: 1.45rem; }
+.btn--principal {
+  min-height: 70px;
+  font-size: 1.45rem;
+}
+
 .btn--principal::after {
   content: '';
   position: absolute;
@@ -119,7 +159,10 @@
   animation: aparecer .8s ease-out 2.1s backwards;
 }
 
-.pendiente__titulo { margin: 0; font-size: 2.4rem; }
+.pendiente__titulo {
+  margin: 0;
+  font-size: 2.4rem;
+}
 
 /* ---------- Aves de fondo por capas (ambiente) ---------- */
 .cielo {
@@ -129,6 +172,7 @@
   pointer-events: none;
   z-index: 0;
 }
+
 .ave {
   position: absolute;
   left: 0;
@@ -139,7 +183,11 @@
   transform: translateX(-20vw);
   animation: vuelo var(--dur) linear var(--delay) infinite;
 }
-.ave--inv { animation-name: vuelo-inv; }
+
+.ave--inv {
+  animation-name: vuelo-inv;
+}
+
 .ave svg {
   width: 100%;
   height: auto;
@@ -148,37 +196,164 @@
   overflow: visible;
   animation: flotar 3s ease-in-out infinite;
 }
-.ave--inv svg { transform: scaleX(-1); animation-name: flotar-inv; }
-.ala { transform-box: view-box; transform-origin: 50% 62%; }
-.ala--izq { animation: aleteo-izq var(--aleteo, .42s) ease-in-out infinite alternate; }
-.ala--der { animation: aleteo-der var(--aleteo, .42s) ease-in-out infinite alternate; }
+
+.ave--inv svg {
+  transform: scaleX(-1);
+  animation-name: flotar-inv;
+}
+
+.ala {
+  transform-box: view-box;
+  transform-origin: 50% 62%;
+}
+
+.ala--izq {
+  animation: aleteo-izq var(--aleteo, .42s) ease-in-out infinite alternate;
+}
+
+.ala--der {
+  animation: aleteo-der var(--aleteo, .42s) ease-in-out infinite alternate;
+}
 
 /* ---------- Keyframes ---------- */
 /* Al terminar, el trazo vuelve a continuo (sin muesca en la esquina) */
 @keyframes dibujar {
-  from { stroke-dasharray: 1; stroke-dashoffset: 1; }
-  to   { stroke-dasharray: 1; stroke-dashoffset: 0; }
+  from {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
 }
+
 @keyframes caer {
-  from { opacity: 0; transform: translateY(-70px) rotate(-10deg); }
-  to   { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(-70px) rotate(-10deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-@keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes pop { from { opacity: 0; transform: scale(.7) translateY(14px); } to { opacity: 1; transform: none; } }
+
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(.7) translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes latido {
-  0%   { box-shadow: 0 0 0 0 rgba(255, 255, 255, .55); }
-  70%  { box-shadow: 0 0 0 18px rgba(255, 255, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, .55);
+  }
+
+  70% {
+    box-shadow: 0 0 0 18px rgba(255, 255, 255, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
 }
-@keyframes vuelo     { from { transform: translateX(-20vw); } to { transform: translateX(115vw); } }
-@keyframes vuelo-inv { from { transform: translateX(115vw); } to { transform: translateX(-20vw); } }
-@keyframes flotar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
-@keyframes flotar-inv { 0%, 100% { transform: scaleX(-1) translateY(0); } 50% { transform: scaleX(-1) translateY(-14px); } }
-@keyframes aleteo-izq { from { transform: rotate(-22deg); } to { transform: rotate(26deg); } }
-@keyframes aleteo-der { from { transform: rotate(22deg); } to { transform: rotate(-26deg); } }
+
+@keyframes vuelo {
+  from {
+    transform: translateX(-20vw);
+  }
+
+  to {
+    transform: translateX(115vw);
+  }
+}
+
+@keyframes vuelo-inv {
+  from {
+    transform: translateX(115vw);
+  }
+
+  to {
+    transform: translateX(-20vw);
+  }
+}
+
+@keyframes flotar {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes flotar-inv {
+
+  0%,
+  100% {
+    transform: scaleX(-1) translateY(0);
+  }
+
+  50% {
+    transform: scaleX(-1) translateY(-14px);
+  }
+}
+
+@keyframes aleteo-izq {
+  from {
+    transform: rotate(-22deg);
+  }
+
+  to {
+    transform: rotate(26deg);
+  }
+}
+
+@keyframes aleteo-der {
+  from {
+    transform: rotate(22deg);
+  }
+
+  to {
+    transform: rotate(-26deg);
+  }
+}
 
 /* Respeta a quien desactiva las animaciones en su dispositivo */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
-  .cielo { display: none; }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .cielo {
+    display: none;
+  }
 }
