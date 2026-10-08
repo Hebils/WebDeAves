@@ -14,7 +14,7 @@ function Aviario() {
     { id: 5, name: 'Buho', titulo: 'Currucutú' }
   ].map((ave) => ({
     ...ave,
-    modelName: `/${ave.name.toLowerCase()}.glb`
+    modelName: `${import.meta.env.BASE_URL}buho.glb`
   }))
 
   return (
