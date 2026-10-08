@@ -1,24 +1,21 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import AFRAME from 'aframe';
+import Inicio from './screens/Inicio.jsx'
+import Pendiente from './screens/Pendiente.jsx'
 import './App.css'
 
-function App() {
+// Navegación por estado (sin react-router) -> cero problemas en GitHub Pages.
+export default function App() {
+  const [pantalla, setPantalla] = useState('inicio')
+  const volver = () => setPantalla('inicio')
 
-
-  return (
-    <>
-      <div className="landing-container">
-        <h1 className="landing-title">Bienvenido a WebAves</h1>
-        <p className="landing-description">
-          Explora el mundo de las aves en 3D. Haz clic en el botón para comenzar tu viaje.
-        </p>
-        <a href="/aviario" className="landing-button">Comenzar</a>
-      </div>
-    </>
-  )
+  switch (pantalla) {
+    case 'juego':
+      return <Pendiente titulo="Recorrido AR" onVolver={volver} />
+    case 'coleccion':
+      return <Pendiente titulo="Colección" onVolver={volver} />
+    case 'logros':
+      return <Pendiente titulo="Logros" onVolver={volver} />
+    default:
+      return <Inicio onNavegar={setPantalla} />
+  }
 }
-
-export default App
