@@ -91,6 +91,8 @@ export const AVES = [
     lat: null, lng: null, radio: 25,
     canto: null,
     modelo: 'buho.glb', // PROVISIONAL
+    imagen: '/imgAves/bichofue.jpg',
+    ilustracion: '/imgAves/bichofue-ilustracion.png',
     quiz: [
       {
         pregunta: '¿De qué color es el vientre del bichofué?',
@@ -123,6 +125,8 @@ export const AVES = [
     lat: null, lng: null, radio: 25,
     canto: null,
     modelo: 'buho.glb', // PROVISIONAL
+    imagen: '/imgAves/azulejo.jpg',
+    ilustracion: '/imgAves/azulejo-ilustracion.png',
     quiz: [
       {
         pregunta: '¿De qué color es el azulejo común?',
@@ -155,6 +159,8 @@ export const AVES = [
     lat: null, lng: null, radio: 25,
     canto: null,
     modelo: 'buho.glb', // PROVISIONAL
+    imagen: '/imgAves/gavilan.jpg',
+    ilustracion: '/imgAves/gavilan-ilustracion.png',
     quiz: [
       {
         pregunta: '¿Dónde suele verse al gavilán pollero?',
