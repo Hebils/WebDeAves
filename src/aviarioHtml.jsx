@@ -4,7 +4,6 @@ import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import AFRAME from 'aframe';
 import './aviario.css'
-import AVES from './data/aves.js'
 
 function Aviario() {
   const Aves = [
