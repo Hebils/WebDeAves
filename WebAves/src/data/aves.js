@@ -22,7 +22,9 @@ export const AVES = [
       'Vive en zonas arboladas y a veces en jardines con árboles dispersos.',
     lat: null, lng: null, radio: 25,
     canto: null,
-    modelo: 'buho.glb', // PROVISIONAL (este sí es el definitivo del búho)
+    modelo: 'buho.glb',
+    imagen: '/imgAves/currucutu.jpg',
+    ilustracion: '/imgAves/currucutu-ilustracion.png',
     quiz: [
       {
         pregunta: '¿Cómo es más fácil identificar a un currucutú?',
@@ -55,6 +57,8 @@ export const AVES = [
     lat: null, lng: null, radio: 25,
     canto: null,
     modelo: 'buho.glb', // PROVISIONAL
+    imagen: '/imgAves/torcaza.jpg',
+    ilustracion: '/imgAves/torcaza-ilustracion.png',
     quiz: [
       {
         pregunta: '¿Hasta qué altura puede encontrarse la torcaza?',

@@ -12,22 +12,16 @@ function Enciclopedia({
   const [sonando, setSonando] = useState(false)     // si el canto está sonando
   const audioRef = useRef(null)
 
-  const BASE = import.meta.env.BASE_URL
-
   // ---------- Datos del ave abierta ----------
   const ave = seleccionada
   const indice = ave ? aves.findIndex((a) => a.id === ave.id) : -1
   const capturada = ave ? capturadas.includes(ave.id) : false
   const quizDelAve = ave ? quices[ave.id] : null
 
-  // ---------- Funciones pequeñas ----------
+  // Imagen grande: viene de aves.js (campo ilustracion o imagen)
+  const imagenGrande = ave ? (vista === 'ilustracion' ? ave.ilustracion : ave.imagen) : null
 
-  // Arregla la ruta de un archivo de la carpeta public/ (para que funcione en GitHub Pages)
-  function ruta(r) {
-    if (!r) return null
-    if (/^(https?:|data:)/.test(r)) return r
-    return BASE + r.replace(/^\//, '')
-  }
+  // ---------- Funciones pequeñas ----------
 
   // Número del ave: 0 -> "001"
   function numero(i) {
@@ -36,7 +30,7 @@ function Enciclopedia({
 
   // Poner o parar el canto
   function alternarCanto() {
-    const canto = ruta(ave?.canto)
+    const canto = ave?.canto
     if (!canto) return
     if (!audioRef.current) {
       audioRef.current = new Audio(canto)
@@ -77,15 +71,15 @@ function Enciclopedia({
               </span>
             </header>
 
-            {/* AQUÍ VA LA IMAGEN GRANDE DEL AVE.
-                Es la ilustración o la foto, según el botón elegido.
+            {/* IMAGEN GRANDE DEL AVE.
+                Viene de aves.js: ave.ilustracion o ave.imagen, según el botón elegido.
+                Si falta, se ve el espacio con la nota.
                 Si el ave no está capturada, aquí va la silueta. */}
             <div className={`enc-hero ${capturada ? '' : 'enc-hero--bloq'}`}>
-              {capturada && ruta(vista === 'ilustracion' ? ave.ilustracion : ave.imagen) ? (
+              {capturada && imagenGrande ? (
                 <img
-                  src={ruta(vista === 'ilustracion' ? ave.ilustracion : ave.imagen)}
-                  alt={vista === 'ilustracion' ? `Ilustración de ${ave.nombre}` : `Foto de ${ave.nombre}`}
-                />
+                  src={imagenGrande}
+                  alt={vista === 'ilustracion' ? `Ilustración de ${ave.nombre}` : `Foto de ${ave.nombre}`} style={{ borderRadius: '22px' }} />
               ) : (
                 <span className="enc-espacio enc-espacio--grande">
                   {capturada ? (vista === 'ilustracion' ? 'Aquí va la ilustración' : 'Aquí va la foto') : '?'}
@@ -197,11 +191,12 @@ function Enciclopedia({
                   >
                     <span className="enc-carta-num">#{numero(i)}</span>
 
-                    {/* AQUÍ VA LA IMAGEN PEQUEÑA DEL AVE (cuadrada).
+                    {/* IMAGEN PEQUEÑA DEL AVE (cuadrada).
+                        Viene de aves.js: a.ilustracion.
                         Si el ave no está capturada, aquí va la silueta. */}
                     <span className="enc-carta-img">
-                      {estaCapturada && ruta(a.ilustracion) ? (
-                        <img src={ruta(a.ilustracion)} alt="" loading="lazy" />
+                      {estaCapturada && a.ilustracion ? (
+                        <img src={a.ilustracion} alt="" loading="lazy" />
                       ) : (
                         <span className="enc-espacio">{estaCapturada ? 'Imagen' : '?'}</span>
                       )}

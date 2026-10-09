@@ -224,8 +224,8 @@
   background: #fff;
   border-radius: 22px;
   box-shadow: 0 5px 0 var(--e-dark);
-  aspect-ratio: 4 / 3;
-  max-height: 46dvh;
+  /*aspect-ratio: 5 / 3;*/
+  max-height: 70 dvh;
   width: 100%;
   overflow: hidden;
   display: grid;
