@@ -4,6 +4,7 @@ import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import AFRAME from 'aframe';
 import './aviario.css'
+import Aves from 'aves.js'
 
 function Aviario() {
   const Aves = [
@@ -14,7 +15,7 @@ function Aviario() {
     { id: 5, name: 'Buho', titulo: 'Currucutú' }
   ].map((ave) => ({
     ...ave,
-    modelName: `${import.meta.env.BASE_URL}buho.glb`
+    modelName: `Models/${ave.name.toLowerCase()}.glb`
   }))
 
   return (
