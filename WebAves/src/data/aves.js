@@ -21,7 +21,7 @@ export const AVES = [
       'Es mucho más fácil de identificar por su canto que por la vista: un trino rápido y corto con un "pop" al final. ' +
       'Vive en zonas arboladas y a veces en jardines con árboles dispersos.',
     lat: null, lng: null, radio: 25,
-    canto: null,
+    canto: '/Cantos/currucutu.mp3',
     modelo: 'buho.glb',
     imagen: '/imgAves/currucutu.jpg',
     ilustracion: '/imgAves/currucutu-ilustracion.png',
@@ -55,7 +55,7 @@ export const AVES = [
       'Es marrón grisácea, con un parche iridiscente en el cuello, manchas negras en las alas y patas rojizas. ' +
       'Frecuenta lugares abiertos, pueblos y ciudades, y a menudo anda en bandadas.',
     lat: null, lng: null, radio: 25,
-    canto: null,
+    canto: '/Cantos/torcaza.mp3',
     modelo: 'buho.glb', // PROVISIONAL
     imagen: '/imgAves/torcaza.jpg',
     ilustracion: '/imgAves/torcaza-ilustracion.png',
@@ -89,7 +89,7 @@ export const AVES = [
       'Tiene el vientre amarillo y alas y cola marrones con bordes rojizos. ' +
       'Prefiere perchas visibles, cerca de zonas abiertas o de agua, y come peces, insectos, lagartijas y frutas.',
     lat: null, lng: null, radio: 25,
-    canto: null,
+    canto: '/Cantos/bichofue.mp3',
     modelo: 'buho.glb', // PROVISIONAL
     imagen: '/imgAves/bichofue.jpg',
     ilustracion: '/imgAves/bichofue-ilustracion.png',
@@ -123,7 +123,7 @@ export const AVES = [
       'Tiene ojos oscuros y pico robusto. Se alimenta de frutas en la parte alta y media de los árboles ' +
       'y se percha en los cables de teléfono.',
     lat: null, lng: null, radio: 25,
-    canto: null,
+    canto: '/Cantos/azulejo.mp3',
     modelo: 'buho.glb', // PROVISIONAL
     imagen: '/imgAves/azulejo.jpg',
     ilustracion: '/imgAves/azulejo-ilustracion.png',
@@ -157,7 +157,7 @@ export const AVES = [
       'El adulto tiene ojos pálidos penetrantes y el pecho estriado, que contrasta con el vientre barrado. ' +
       'Vuela con aleteos rápidos y fuertes.',
     lat: null, lng: null, radio: 25,
-    canto: null,
+    canto: '/Cantos/gavilan.mp3',
     modelo: 'buho.glb', // PROVISIONAL
     imagen: '/imgAves/gavilan.jpg',
     ilustracion: '/imgAves/gavilan-ilustracion.png',
