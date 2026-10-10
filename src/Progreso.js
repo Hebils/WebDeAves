@@ -6,7 +6,7 @@ import { AVES } from './data/aves.js'
 const CLAVE = 'webaves-uao-progreso'
 
 const INICIAL = {
-  capturadas: [],        // ['currucutu', 'torcaza']
+  capturadas: ['currucutu', 'torcaza', 'bichofue', 'azulejo', 'gavilan'],        // ['currucutu', 'torcaza']
   quices: {},            // { currucutu: { completado: true, puntaje: 3 } }
   quizFinal: { desbloqueado: false, mejorPuntaje: 0 },
   insignias: [],         // ['primer-avistamiento']

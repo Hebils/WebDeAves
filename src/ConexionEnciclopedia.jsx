@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import Enciclopedia from './Enciclopedia.jsx'
 import { AVES } from './data/aves.js'
-import { useProgreso } from './Progreso.js'
+import { useProgreso } from './progreso.js'
 
 /* Junta los datos con la pantalla:
    - las aves (aves.js)
