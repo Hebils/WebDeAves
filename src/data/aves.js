@@ -21,10 +21,10 @@ export const AVES = [
       'Es mucho más fácil de identificar por su canto que por la vista: un trino rápido y corto con un "pop" al final. ' +
       'Vive en zonas arboladas y a veces en jardines con árboles dispersos.',
     lat: null, lng: null, radio: 25,
-    canto: '/Cantos/currucutu.mp3',
+    canto: './Cantos/currucutu.mp3',
     modelo: 'buho.glb',
-    imagen: '/imgAves/currucutu.jpg',
-    ilustracion: '/imgAves/currucutu-ilustracion.png',
+    imagen: './imgAves/currucutu.jpg',
+    ilustracion: './imgAves/currucutu-ilustracion.png',
     quiz: [
       {
         pregunta: '¿Cómo es más fácil identificar a un currucutú?',
