@@ -164,7 +164,7 @@
 .enc-carta-img {
   aspect-ratio: 1;
   border-radius: 12px;
-  background: var(color);
+  background: var(#ffff);
   display: grid;
   place-items: center;
   overflow: hidden;
