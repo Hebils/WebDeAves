@@ -1,3 +1,6 @@
+import { useRef } from 'react'
+import { TOQUES_PARA_ABRIR, VENTANA_TOQUES_MS } from '../Desarrollo.js'
+
 // Pantalla inicial. Sigue el boceto: título (imagen), descripción,
 // INICIAR / COLECCIÓN / LOGROS y logo UAO abajo.
 const TITULO_IMG = null // cuando tengas la imagen: 'img/titulo.png'
@@ -57,7 +60,18 @@ function Ave({ style, invertida }) {
   )
 }
 
-export default function Inicio({ onNavegar }) {
+export default function Inicio({ onNavegar, onAbrirDev }) {
+  // Botón secreto: el logo UAO abre el panel de desarrollo tras varios toques seguidos
+  const toques = useRef([])
+  function tocarLogo() {
+    const ahora = Date.now()
+    toques.current = [...toques.current.filter((t) => ahora - t < VENTANA_TOQUES_MS), ahora]
+    if (toques.current.length >= TOQUES_PARA_ABRIR) {
+      toques.current = []
+      onAbrirDev?.()
+    }
+  }
+
   return (
     <main className="inicio">
       <div className="cielo" aria-hidden="true">
@@ -102,7 +116,9 @@ export default function Inicio({ onNavegar }) {
       </nav>
 
       <footer className="logo">
-        <img src={`${import.meta.env.BASE_URL}img/uao-blanco.png`} alt="Universidad Autónoma de Occidente" />
+        <button type="button" className="logo__btn" onClick={tocarLogo}>
+          <img src={`${import.meta.env.BASE_URL}img/uao-blanco.png`} alt="Universidad Autónoma de Occidente" />
+        </button>
       </footer>
     </main>
   )

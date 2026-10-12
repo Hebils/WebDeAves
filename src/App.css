@@ -152,6 +152,22 @@
 }
 
 /* ---------- Logo ---------- */
+/* El logo es un botón secreto (abre el panel de desarrollo): no debe verse como botón */
+.logo__btn {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+  font: inherit;
+}
+
+.logo__btn:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 6px;
+  border-radius: 10px;
+}
+
 .logo img {
   width: 150px;
   height: auto;
