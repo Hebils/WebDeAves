@@ -1,0 +1,335 @@
+/* ===== Quiz — usa las variables y botones de Enciclopedia.css (clase .enc) ===== */
+.qz {
+  --q-verde: #17703d;
+  --q-verde-osc: #0b3a1f;
+}
+
+/* ----- Cabecera: ave + título + avance ----- */
+.qz-cab {
+  background: #fff;
+  color: var(--e-uao);
+  border-radius: 20px;
+  padding: 12px 16px 16px;
+  box-shadow: 0 5px 0 var(--e-dark);
+}
+
+.qz-cab-fila {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.qz-cab-img {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: var(--e-rosa);
+  color: var(--e-uao);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.qz-cab-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.qz-cab h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.qz-cab p {
+  margin: 2px 0 0;
+  font-size: 16px;
+  color: #7a3a45;
+}
+
+/* ----- Pregunta ----- */
+.qz-pregunta,
+.qz-resultado {
+  margin-top: 18px;
+}
+
+.qz-chip {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 3px 12px;
+  border-radius: 12px;
+  background: var(--e-rosa);
+  color: var(--e-uao);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.qz-texto {
+  margin: 0;
+  font-size: 25px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--e-uao);
+}
+
+.qz-opciones {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.qz-op {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 14px;
+  text-align: left;
+  border: 3px solid var(--e-uao);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--e-uao);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--e-dark);
+  transition: transform .08s, box-shadow .08s, background-color .15s, opacity .2s;
+}
+
+.qz-op-letra {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--e-rosa);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.qz-op-marca {
+  flex: none;
+  margin-left: auto;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.qz-op[aria-disabled='false']:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--e-dark);
+}
+
+@media (hover: hover) {
+  .qz-op[aria-disabled='false']:hover {
+    background: var(--e-rosa);
+  }
+}
+
+.qz-op[aria-disabled='true'] {
+  cursor: default;
+}
+
+/* Después de responder: verde = la correcta, vino oscuro = tu error */
+.qz-op--ok {
+  background: var(--q-verde);
+  border-color: var(--q-verde-osc);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--q-verde-osc);
+  animation: enc-late .5s ease-out;
+}
+
+.qz-op--ok .qz-op-letra {
+  background: #fff;
+  color: var(--q-verde);
+}
+
+.qz-op--mal {
+  background: var(--e-dark);
+  border-color: #2a0005;
+  color: #fff;
+  box-shadow: 0 4px 0 #2a0005;
+}
+
+.qz-op--mal .qz-op-letra {
+  background: #fff;
+  color: var(--e-dark);
+}
+
+.qz-op--apagada {
+  opacity: .5;
+}
+
+.qz-feedback {
+  margin: 16px 0 0;
+  min-height: 1.4em;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.qz-feedback--ok {
+  color: var(--q-verde);
+}
+
+.qz-feedback--mal {
+  color: var(--e-uao);
+}
+
+/* ----- Confirmar salida ----- */
+.qz-confirmar {
+  margin-bottom: 14px;
+  padding: 14px 16px 16px;
+  border-radius: 20px;
+  background: #fff;
+  color: var(--e-tinta);
+  box-shadow: 0 5px 0 var(--e-dark);
+  animation: enc-sube .25s ease-out both;
+}
+
+.qz-confirmar p {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.qz-confirmar-botones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.qz-confirmar .enc-btn {
+  font-size: 16px;
+  padding: 0 8px;
+}
+
+/* ----- Resultado ----- */
+.qz-resultado {
+  text-align: center;
+}
+
+.qz-sello {
+  display: inline-block;
+  margin: 0;
+  padding: 4px 16px;
+  border-radius: 14px;
+  background: #ead9dc;
+  color: var(--e-dark);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.qz-sello--ok {
+  background: var(--e-oro);
+}
+
+.qz-puntaje {
+  margin: 14px 0 0;
+  color: var(--e-uao);
+  line-height: 1;
+  outline: none;
+  animation: enc-pop .5s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+
+.qz-puntaje strong {
+  font-size: 84px;
+  font-weight: 700;
+}
+
+.qz-puntaje span {
+  font-size: 32px;
+  font-weight: 600;
+  color: #7a3a45;
+}
+
+.qz-puntos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.qz-punto {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--q-verde);
+}
+
+.qz-punto--mal {
+  background: #e3bcc3;
+}
+
+.qz-mensaje {
+  margin: 16px auto 0;
+  max-width: 34ch;
+}
+
+.qz-banner {
+  display: grid;
+  gap: 2px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--e-oro);
+  color: var(--e-dark);
+  box-shadow: 0 4px 0 var(--e-dark);
+  animation: enc-pop .5s cubic-bezier(.34, 1.56, .64, 1) .25s both;
+}
+
+.qz-banner strong {
+  font-size: 22px;
+}
+
+.qz-banner span {
+  font-size: 16px;
+}
+
+.qz-logros {
+  list-style: none;
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 0;
+}
+
+.qz-logro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  text-align: left;
+  border: 3px solid var(--e-oro);
+  border-radius: 16px;
+  background: #fff8dc;
+  animation: enc-sube .4s ease-out .4s both;
+}
+
+.qz-logro-medalla {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--e-oro);
+  color: var(--e-dark);
+  font-size: 22px;
+}
+
+.qz-logro small {
+  display: block;
+  font-size: 14px;
+  color: #7a3a45;
+}
+
+.qz-logro strong {
+  font-size: 18px;
+  color: var(--e-uao);
+}

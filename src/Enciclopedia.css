@@ -456,6 +456,94 @@
   border-color: var(--e-dark);
 }
 
+/* ----- Súper quiz (botón en la colección) ----- */
+.enc-super {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 72px;
+  margin-top: 18px;
+  padding: 12px 16px;
+  text-align: left;
+  border: 3px solid #fff;
+  border-radius: 18px;
+  font-family: inherit;
+  color: #fff;
+}
+
+.enc-super-icono {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.enc-super-texto strong {
+  display: block;
+  font-size: 21px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.enc-super-texto small {
+  display: block;
+  margin-top: 3px;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+/* Bloqueado: gris y sin respuesta al toque */
+.enc-super--bloq {
+  background: #a9a2a4;
+  border-color: #8d8688;
+  color: #2f2729;
+  box-shadow: 0 5px 0 #5c5557;
+  cursor: not-allowed;
+}
+
+.enc-super--bloq .enc-super-icono {
+  background: #8d8688;
+  color: #2f2729;
+}
+
+/* Desbloqueado: rojo, con un brillo que cruza el botón y un anillo dorado que late */
+.enc-super--abierto {
+  cursor: pointer;
+  background-image:
+    linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .42) 50%, transparent 60%),
+    linear-gradient(180deg, #e4192f, #b5102a);
+  background-size: 250% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  box-shadow: 0 5px 0 #3d0008;
+  animation: enc-super-brillo 3.4s ease-in-out infinite;
+  transition: transform .08s, box-shadow .08s;
+}
+
+.enc-super--abierto .enc-super-icono {
+  background: #fff;
+  color: #c8102e;
+}
+
+.enc-super--abierto::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 3px solid var(--e-oro);
+  border-radius: 21px;
+  opacity: 0;
+  pointer-events: none;
+  animation: enc-super-anillo 1.8s ease-out infinite;
+}
+
+.enc-super--abierto:active {
+  transform: translateY(5px);
+  box-shadow: 0 0 0 #3d0008;
+}
+
 /* ----- Animaciones ----- */
 @keyframes enc-pop {
   from {
@@ -494,6 +582,30 @@
 @keyframes enc-late {
   50% {
     transform: scale(1.03);
+  }
+}
+
+@keyframes enc-super-brillo {
+  0% {
+    background-position: 100% 0, 0 0;
+  }
+
+  60%,
+  100% {
+    background-position: 0% 0, 0 0;
+  }
+}
+
+@keyframes enc-super-anillo {
+  0% {
+    inset: -3px;
+    opacity: .95;
+  }
+
+  100% {
+    inset: -15px;
+    border-radius: 33px;
+    opacity: 0;
   }
 }
 

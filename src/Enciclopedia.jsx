@@ -5,7 +5,8 @@ import './Enciclopedia.css'
    Los datos y el progreso llegan desde ConexionEnciclopedia.jsx */
 function Enciclopedia({
   aves, capturadas, quices, seleccionada,
-  onSeleccionar, onCerrar, onNavegar, onVolver, onIniciar, onQuiz,
+  superQuiz, // { desbloqueado, completado, mejorPuntaje, aprobados, total }
+  onSeleccionar, onCerrar, onNavegar, onVolver, onIniciar, onQuiz, onSuperQuiz,
 }) {
   // ---------- Estados de esta pantalla ----------
   const [vista, setVista] = useState('ilustracion') // 'ilustracion' o 'foto'
@@ -128,11 +129,15 @@ function Enciclopedia({
                   </div>
 
                   <div className="enc-acciones">
-                    <button type="button" className="enc-btn enc-btn--amarillo" onClick={() => onQuiz?.(ave.id)}>
-                      {quizDelAve?.completado
-                        ? `Repetir quiz (${quizDelAve.puntaje}/${ave.quiz?.length ?? 3})`
-                        : 'Hacer el quiz'}
-                    </button>
+                    {ave.quiz?.length > 0 && (
+                      <button type="button" className="enc-btn enc-btn--amarillo" onClick={() => onQuiz?.(ave.id)}>
+                        {quizDelAve?.completado
+                          ? `Repetir quiz (mejor: ${quizDelAve.puntaje}/${ave.quiz.length})`
+                          : quizDelAve?.intentos > 0
+                            ? `Volver a intentar el quiz (mejor: ${quizDelAve.puntaje}/${ave.quiz.length})`
+                            : 'Hacer el quiz'}
+                      </button>
+                    )}
                     {ave.wikiaves && (
                       <a className="enc-btn" href={ave.wikiaves} target="_blank" rel="noopener noreferrer">
                         Ver en WikiAves ↗
@@ -176,6 +181,8 @@ function Enciclopedia({
               </div>
             </div>
 
+            {superQuiz && <BotonSuperQuiz datos={superQuiz} onClick={onSuperQuiz} />}
+
             <div className="enc-grid">
               {aves.map((a, i) => {
                 const estaCapturada = capturadas.includes(a.id)
@@ -204,7 +211,7 @@ function Enciclopedia({
 
                     <span className="enc-carta-nombre">{estaCapturada ? a.nombre : '???'}</span>
                     {quiz?.completado && (
-                      <span className="enc-carta-quiz">Quiz {quiz.puntaje}/{a.quiz?.length ?? 3}</span>
+                      <span className="enc-carta-quiz">✓ Quiz {quiz.puntaje}/{a.quiz?.length ?? 3}</span>
                     )}
                   </button>
                 )
@@ -216,6 +223,44 @@ function Enciclopedia({
         )}
       </main>
     </>
+  )
+}
+
+/* Botón del súper quiz.
+   - Bloqueado: gris, no se puede tocar, dice cuántos quices faltan.
+   - Desbloqueado: rojo, con anillo que late y un brillo que pasa de vez en cuando. */
+function BotonSuperQuiz({ datos, onClick }) {
+  const { desbloqueado, completado, mejorPuntaje, aprobados, total } = datos
+  const faltan = total - aprobados
+
+  let detalle
+  if (!desbloqueado) {
+    detalle = `Aprueba el quiz de todas las aves (${aprobados}/${total}). Te ${faltan === 1 ? 'falta 1' : `faltan ${faltan}`}.`
+  } else if (completado) {
+    detalle = `Superado. Tu mejor puntaje: ${mejorPuntaje}. Toca para jugar otra vez.`
+  } else {
+    detalle = '¡Ya puedes jugarlo! Preguntas de todas las aves.'
+  }
+
+  return (
+    <button
+      type="button"
+      className={`enc-super ${desbloqueado ? 'enc-super--abierto' : 'enc-super--bloq'}`}
+      disabled={!desbloqueado}
+      onClick={onClick}
+    >
+      <span className="enc-super-icono" aria-hidden="true">
+        {desbloqueado ? (
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" /></svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 0 1 4 0v2h-4V7z" /></svg>
+        )}
+      </span>
+      <span className="enc-super-texto">
+        <strong>Súper quiz</strong>
+        <small>{detalle}</small>
+      </span>
+    </button>
   )
 }
 
