@@ -1,24 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import AFRAME from 'aframe'
 import { AVES } from './data/aves.js'
 import { useProgreso } from './Progreso.js'
 import './aviario.css'
 
 /* ======================================================================
-   EXPERIENCIA DE RA: el usuario es un fotógrafo de aves.
-   - La cámara del celular se ve de fondo.
-   - Las aves (modelos 3D de A-Frame) aparecen en lugares aleatorios alrededor.
+   EXPERIENCIA DE RA CON GPS: el usuario es un fotógrafo de aves.
+   - Cada ave está en unas coordenadas reales del campus (lat y lng de aves.js).
+   - Al caminar hacia ella se ve más grande, como en la vida real.
    - Se busca el ave, se mantiene centrada para enfocarla y se toca el botón de foto.
    - Al tomar la foto sale la tarjeta del ave, con el quiz opcional.
+
+   IMPORTANTE: A-Frame y AR.js se cargan con <script> en aviario.html (no con import),
+   por eso aquí se usa window.AFRAME.
    ====================================================================== */
 
+const AFRAME = window.AFRAME
+
 // ---------- Ajustes (se pueden cambiar fácil) ----------
-const ESCALA_AVE = 1            // tamaño de los modelos 3D (sube o baja según se vean)
+const MODO_DEMO = true          // true = las aves sin coordenadas aparecen a 8–16 m de ti (para probar)
+const ESCALA_AVE = 3            // tamaño de los modelos 3D (sube o baja según se vean)
+const ALTURA_AVE = 1            // altura del ave sobre el suelo, en metros
+const RADIO_POR_DEFECTO = 25    // a cuántos metros aparece un ave si no tiene "radio" en aves.js
 const GRADOS_ENFOQUE = 10       // qué tan centrada debe estar el ave para enfocarla
 const SEGUNDOS_ENFOQUE = 2      // cuánto tiempo hay que mantenerla centrada
 const GRADOS_MAXIMOS_FOTO = 25  // si el ave está más lejos del centro, no sale en la foto
 
-const BASE = import.meta.env.BASE_URL // se usa para volver a la portada
+const BASE = import.meta.env.BASE_URL
 
 /* ---------- Componente de A-Frame: reproduce la animación del modelo .glb ----------
    Se usa en cada ave con el atributo animar-glb.
@@ -29,7 +36,6 @@ if (!AFRAME.components['animar-glb']) {
       this.mixer = null
       this.el.addEventListener('model-loaded', (e) => {
         const modelo = e.detail.model
-
         const clips = modelo.animations || []
         if (clips.length === 0) return
         const clip = clips.find((c) => /idle/i.test(c.name)) || clips[0]
@@ -43,15 +49,27 @@ if (!AFRAME.components['animar-glb']) {
   })
 }
 
-// Posición aleatoria de un ave: a 4–7 metros del usuario.
-// Cada ave tiene su "tajada" del círculo para que no queden encimadas.
-function posicionAleatoria(i, total) {
-  const angulo = (i / total) * Math.PI * 2 + (Math.random() - 0.5) * 0.8
-  const distancia = 4 + Math.random() * 3
-  const x = Math.sin(angulo) * distancia
-  const z = -Math.cos(angulo) * distancia
-  const y = -0.8 + Math.random() * 1.2 // un poco abajo o arriba de los ojos
-  return `${x.toFixed(2)} ${y.toFixed(2)} ${z.toFixed(2)}`
+/* ---------- Funciones pequeñas ---------- */
+
+// Distancia en metros entre dos puntos GPS
+function distanciaMetros(lat1, lng1, lat2, lng2) {
+  const R = 6371000
+  const rad = (g) => (g * Math.PI) / 180
+  const dLat = rad(lat2 - lat1)
+  const dLng = rad(lng2 - lng1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// Modo demo: un punto a 8–16 metros del usuario, en una dirección distinta para cada ave.
+// (1 grado de latitud ≈ 111.320 metros)
+function puntoCercano(origen, i, total) {
+  const angulo = (i / total) * Math.PI * 2 + Math.random() * 0.8
+  const metros = 8 + Math.random() * 8
+  return {
+    lat: origen.lat + (metros * Math.cos(angulo)) / 111320,
+    lng: origen.lng + (metros * Math.sin(angulo)) / (111320 * Math.cos((origen.lat * Math.PI) / 180)),
+  }
 }
 
 function Aviario() {
@@ -62,7 +80,8 @@ function Aviario() {
   const [listo, setListo] = useState(false)        // true cuando el ave está bien enfocada
   const [flash, setFlash] = useState(false)        // destello blanco al tomar la foto
   const [escondidas, setEscondidas] = useState([]) // aves ya fotografiadas (desaparecen)
-  const [llegadas, setLlegadas] = useState([])     // aves que ya aparecieron en la escena
+  const [gps, setGps] = useState(null)             // ubicación actual { lat, lng }
+  const [origen, setOrigen] = useState(null)       // primera ubicación (solo para el modo demo)
 
   // Tarjeta del ave capturada y su quiz
   const [tarjeta, setTarjeta] = useState(null)     // ave capturada (null = sin tarjeta)
@@ -72,7 +91,6 @@ function Aviario() {
   const [elegida, setElegida] = useState(null)     // opción que tocó el usuario
 
   // ---------- Referencias ----------
-  const videoRef = useRef(null)    // video de la cámara (fondo)
   const escenaRef = useRef(null)   // <a-scene>
   const avesRef = useRef({})       // elementos 3D de las aves, por id
   const anilloRef = useRef(null)   // anillo de enfoque
@@ -80,51 +98,41 @@ function Aviario() {
   const estadoRef = useRef({ grados: 180, id: null }) // lo que se ve en vivo
   const visiblesRef = useRef([])
 
-  // ---------- Aves que aparecen ----------
+  // ---------- Aves de esta sesión ----------
   // Se eligen una sola vez: las que el usuario aún no ha capturado.
-  // Si ya las capturó todas, aparecen todas de nuevo.
+  // Si ya las capturó todas, entran todas de nuevo.
   const aves = useMemo(() => {
     const capturadas = progreso.capturadas ?? []
-    const pendientes = AVES.filter((a) => !capturadas.includes(a.id))
-    const lista = pendientes.length > 0 ? pendientes : AVES
-    return lista.map((a, i) => ({ ...a, posicion: posicionAleatoria(i, lista.length) }))
+    const faltantes = AVES.filter((a) => !capturadas.includes(a.id))
+    return faltantes.length > 0 ? faltantes : AVES
   }, [])
 
-  const pendientes = aves.filter((a) => !escondidas.includes(a.id))   // aún no fotografiadas
-  const visibles = pendientes.filter((a) => llegadas.includes(a.id)) // las que ya aparecieron
+  // ---------- Dónde está cada ave ----------
+  // Usa lat y lng de aves.js. Si no las tiene y el modo demo está activo,
+  // se pone cerca del usuario para poder probar.
+  const lugares = useMemo(() => {
+    const mapa = {}
+    aves.forEach((a, i) => {
+      if (a.lat != null && a.lng != null) mapa[a.id] = { lat: a.lat, lng: a.lng }
+      else if (MODO_DEMO && origen) mapa[a.id] = puntoCercano(origen, i, aves.length)
+    })
+    return mapa
+  }, [aves, origen])
+
+  // ---------- Aves que se ven ahora ----------
+  // Solo las que no se han fotografiado y están dentro de su radio de aparición.
+  const pendientes = aves.filter((a) => !escondidas.includes(a.id))
+  const visibles = pendientes.filter((a) => {
+    const lugar = lugares[a.id]
+    if (!gps || !lugar) return false
+    return distanciaMetros(gps.lat, gps.lng, lugar.lat, lugar.lng) <= (a.radio ?? RADIO_POR_DEFECTO)
+  })
   visiblesRef.current = visibles
 
   function mostrarAviso(texto) {
     setAviso(texto)
     setTimeout(() => setAviso(''), 2800)
   }
-
-  // ---------- Hacer la escena transparente (para ver la cámara detrás) ----------
-  useEffect(() => {
-    const escena = escenaRef.current
-    if (!escena) return
-    function hacerTransparente() {
-      escena.object3D.background = null
-      escena.renderer.setClearColor(0x000000, 0)
-    }
-    if (escena.hasLoaded) hacerTransparente()
-    else escena.addEventListener('loaded', hacerTransparente)
-    return () => escena.removeEventListener('loaded', hacerTransparente)
-  }, [])
-
-  // ---------- Las aves llegan poco a poco, en orden aleatorio ----------
-  useEffect(() => {
-    if (!activo) return
-    const orden = [...aves].sort(() => Math.random() - 0.5) // orden al azar
-    const temporizadores = []
-    let espera = 0
-    orden.forEach((a, i) => {
-      // La primera llega a los 2 segundos. Las demás, entre 6 y 15 segundos después de la anterior.
-      espera += i === 0 ? 2000 : 6000 + Math.random() * 9000
-      temporizadores.push(setTimeout(() => setLlegadas((l) => [...l, a.id]), espera))
-    })
-    return () => temporizadores.forEach(clearTimeout)
-  }, [activo])
 
   // ---------- Botón "Activar cámara": pide los permisos (dentro del mismo toque) ----------
   async function activar() {
@@ -140,17 +148,29 @@ function Aviario() {
       } catch { mostrarAviso('No se pudo activar el giroscopio.') }
     }
 
-    // 3) Cámara trasera como fondo
-    try {
-      const flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-      videoRef.current.srcObject = flujo
-      await videoRef.current.play()
-    } catch {
-      mostrarAviso('No se pudo abrir la cámara. Puedes seguir, pero verás fondo oscuro.')
+    // 3) Ubicación: se sigue en vivo para saber qué aves están cerca
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (p) => {
+          const punto = { lat: p.coords.latitude, lng: p.coords.longitude }
+          setGps(punto)
+          setOrigen((o) => o ?? punto) // la primera ubicación se guarda para el modo demo
+        },
+        () => mostrarAviso('No se pudo leer tu ubicación. Activa el GPS.'),
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 },
+      )
     }
 
+    // 4) Se crea la escena. AR.js abre la cámara por su cuenta al crearla.
     setActivo(true)
   }
+
+  // Si la cámara falla, AR.js avisa con este evento
+  useEffect(() => {
+    const alFallarCamara = () => mostrarAviso('No se pudo abrir la cámara. Revisa el permiso.')
+    window.addEventListener('camera-error', alFallarCamara)
+    return () => window.removeEventListener('camera-error', alFallarCamara)
+  }, [])
 
   // ---------- Mientras se busca: revisa en cada cuadro dónde están las aves ----------
   useEffect(() => {
@@ -286,47 +306,59 @@ function Aviario() {
     setTarjeta(null)
   }
 
+  // Texto de ayuda del visor
+  function textoPista() {
+    if (!gps) return 'Buscando tu ubicación...'
+    if (visibles.length === 0) return 'Camina por el campus para encontrar aves'
+    return 'Gira despacio y busca a tu alrededor'
+  }
+
   /* ====================================================================
      PANTALLA
      ==================================================================== */
   return (
     <div className="av">
-      {/* Fondo: la cámara del celular */}
-      <video ref={videoRef} className="av-video" playsInline muted autoPlay />
+      {/* Escena de A-Frame. La escena se crea solo después del toque en "Activar cámara"
+          (así el iPhone deja pedir los permisos). AR.js pone la cámara de fondo (arjs). */}
+      {activo && (
+        <div className="av-escena">
+          <a-scene
+            ref={escenaRef}
+            embedded=""
+            loading-screen="enabled: false"
+            vr-mode-ui="enabled: false"
+            arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
+            renderer="antialias: true; alpha: true"
+          >
+            <a-light type="ambient" intensity="0.9"></a-light>
+            <a-light type="directional" position="1 3 2" intensity="1"></a-light>
 
-      {/* Escena de A-Frame (transparente, encima de la cámara) */}
-      <div className="av-escena">
-        <a-scene
-          ref={escenaRef}
-          embedded=""
-          background="transparent: true"
-          renderer="alpha: true; antialias: true"
-          xr-mode-ui="enabled: false"
-          vr-mode-ui="enabled: false"
-          device-orientation-permission-ui="enabled: false"
-          loading-screen="enabled: false"
-        >
-          <a-light type="ambient" intensity="0.9"></a-light>
-          <a-light type="directional" position="1 3 2" intensity="1"></a-light>
+            {/* Cámara con GPS: se mueve por el mapa al caminar y gira con el giroscopio */}
+            <a-camera
+              id="camara"
+              look-controls-enabled="false"
+              arjs-device-orientation-controls="smoothingFactor: 0.1"
+              gps-new-camera="gpsMinDistance: 1"
+            ></a-camera>
 
-          {/* Cámara: gira con el giroscopio (en computador, arrastrando el mouse) */}
-          <a-entity id="camara" camera="" look-controls="touchEnabled: false" position="0 0 0"></a-entity>
-
-          {/* Las aves: cada una aparece en su posición aleatoria */}
-          {activo && visibles.map((a) => (
-            <a-entity
-              key={a.id}
-              ref={(el) => { avesRef.current[a.id] = el }}
-              gltf-model={a.modelo}
-              animar-glb=""
-              look-at="#camara"
-              position={a.posicion}
-              scale={`${ESCALA_AVE} ${ESCALA_AVE} ${ESCALA_AVE}`}
-              sound={a.canto ? `src: url(${a.canto}); loop: true; autoplay: true; volume: 0.3` : undefined}
-            ></a-entity>
-          ))}
-        </a-scene>
-      </div>
+            {/* Las aves: cada una queda fija en sus coordenadas (gps-new-entity-place).
+                Si estás lejos se ve pequeña; al acercarte crece. */}
+            {visibles.map((a) => (
+              <a-entity
+                key={a.id}
+                ref={(el) => { avesRef.current[a.id] = el }}
+                gltf-model={a.modelo}
+                animar-glb=""
+                look-at="#camara"
+                gps-new-entity-place={`latitude: ${lugares[a.id].lat}; longitude: ${lugares[a.id].lng}`}
+                position={`0 ${ALTURA_AVE} 0`}
+                scale={`${ESCALA_AVE} ${ESCALA_AVE} ${ESCALA_AVE}`}
+                sound={a.canto ? `src: url(${a.canto}); loop: true; autoplay: true; volume: 0.3` : undefined}
+              ></a-entity>
+            ))}
+          </a-scene>
+        </div>
+      )}
 
       {/* ---------- Visor: lo que se ve mientras se busca ---------- */}
       {activo && !tarjeta && (
@@ -336,10 +368,7 @@ function Aviario() {
           <div className="av-pista">
             {pendientes.length === 0
               ? <><b>¡Fotografiaste todas!</b><span>Revisa tu colección en la enciclopedia</span></>
-              : <>
-                <b>Quedan {pendientes.length} {pendientes.length === 1 ? 'ave' : 'aves'}</b>
-                <span>{visibles.length > 0 ? 'Gira despacio y busca a tu alrededor' : 'Espera... un ave está por llegar'}</span>
-              </>}
+              : <><b>Quedan {pendientes.length} {pendientes.length === 1 ? 'ave' : 'aves'}</b><span>{textoPista()}</span></>}
           </div>
 
           <div ref={flechaRef} className="av-flecha" aria-live="polite"></div>
@@ -368,8 +397,8 @@ function Aviario() {
         <div className="av-panel">
           <div className="av-caja">
             <h1>Fotógrafo de aves</h1>
-            <p>Busca las aves con la cámara y tómales una foto.</p>
-            <p className="av-pequeno">Te pediremos permiso para usar la cámara y el giroscopio.</p>
+            <p>Camina por el campus, busca las aves con la cámara y tómales una foto.</p>
+            <p className="av-pequeno">Te pediremos permiso para usar la cámara, la ubicación y el giroscopio.</p>
             <button type="button" className="av-btn av-btn--amarillo" onClick={activar}>Activar cámara</button>
             {aviso && <p className="av-aviso-caja">{aviso}</p>}
           </div>
