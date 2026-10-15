@@ -324,7 +324,6 @@ function Aviario() {
         <div className="av-escena">
           <a-scene
             ref={escenaRef}
-            embedded=""
             loading-screen="enabled: false"
             vr-mode-ui="enabled: false"
             arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
