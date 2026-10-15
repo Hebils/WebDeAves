@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Prueba GPS | WebAves</title>
+
+  <!-- ORDEN IMPORTANTE (así se arregló el error en celular, según el issue #515 de AR.js):
+       1) A-Frame  2) ar-threex-location-only  3) aframe-ar
+       Se usa A-Frame 1.6.0 (la versión de la documentación de AR.js).
+       Esta página NO usa el A-Frame de npm, así que no choca con el resto de la app.
+       Si un enlace falla, cambia "unpkg.com" por "cdn.jsdelivr.net/npm". -->
+  <!-- Elige la versión de A-Frame con la dirección:
+         prueba-gps.html              → A-Frame 1.6.0 (PASO 1, la de la documentación de AR.js)
+         prueba-gps.html?aframe=1.8   → A-Frame 1.8.0 (PASO 2, la de tu package.json;
+                                         necesita el archivo public/aframe-1.8.0.min.js) -->
+  <script>
+    var versionPedida = new URLSearchParams(location.search).get('aframe');
+    var rutaAframe = versionPedida === '1.8'
+      ? './aframe-1.8.0.min.js'
+      : 'https://aframe.io/releases/1.6.0/aframe.min.js';
+    document.write('<script src="' + rutaAframe + '"><\/script>');
+  </script>
+  <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/three.js/build/ar-threex-location-only.js"></script>
+  <script src="https://unpkg.com/@ar-js-org/ar.js@3.4.5/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      font-family: system-ui, sans-serif;
+      color: #fff;
+    }
+
+    /* Todo lo nuestro va encima de la escena (A-Frame usa un z-index muy alto) */
+    #inicio {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      background: #880015;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+
+    #inicio .caja {
+      background: #fff;
+      color: #3a0009;
+      border-radius: 20px;
+      padding: 22px;
+      max-width: 420px;
+      display: grid;
+      gap: 12px;
+    }
+
+    #inicio h1 {
+      margin: 0;
+      font-size: 26px;
+      color: #880015;
+    }
+
+    #inicio p {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.4;
+    }
+
+    button {
+      font: inherit;
+      font-weight: 600;
+      font-size: 17px;
+      border: 0;
+      border-radius: 14px;
+      padding: 14px;
+      background: #ffd54a;
+      color: #5e000e;
+      cursor: pointer;
+    }
+
+    #panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2147483646;
+      background: rgba(0, 0, 0, .7);
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 8px 12px;
+      display: none;
+    }
+
+    #panel b {
+      color: #ffd54a;
+    }
+
+    #botones {
+      position: fixed;
+      bottom: 16px;
+      left: 0;
+      right: 0;
+      z-index: 2147483646;
+      display: none;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    #botones button {
+      padding: 12px 18px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Pantalla inicial (el iPhone exige un toque para dar permisos) -->
+  <div id="inicio">
+    <div class="caja">
+      <h1>Prueba de GPS</h1>
+      <p>Sal al aire libre, lejos de edificios altos. Vamos a poner <b>un ave a 15 metros</b> de donde estés.</p>
+      <p>Cuando la veas, camina hacia ella: si funciona, debe verse cada vez más grande.</p>
+      <button id="empezar">Empezar prueba</button>
+      <p id="mensaje" style="color:#c62828"></p>
+    </div>
+  </div>
+
+  <!-- Panel con datos para saber qué está pasando -->
+  <div id="panel"></div>
+
+  <!-- Botones para ajustar el tamaño del ave -->
+  <div id="botones">
+    <button id="menos">Ave − pequeña</button>
+    <button id="mas">Ave + grande</button>
+  </div>
+
+  <!-- Aquí se crea la escena de A-Frame -->
+  <div id="contenedor"></div>
+
+  <script>
+    // ---------- Ajustes (también se pueden cambiar en la dirección: ?m=30&escala=5) ----------
+    // Ejemplos:  prueba-gps.html?m=30            → ave a 30 metros
+    //            prueba-gps.html?escala=6        → ave más grande
+    //            prueba-gps.html?lat=3.35&lng=-76.52  → ave en unas coordenadas exactas
+    var params = new URLSearchParams(location.search);
+    var METROS = parseFloat(params.get('m')) || 15;            // distancia del ave (hacia el norte)
+    var escala = parseFloat(params.get('escala')) || 3;        // tamaño del modelo
+    var ALTURA = parseFloat(params.get('altura')) || 1;        // altura del ave (metros)
+    var MODELO = params.get('modelo') || './Modelos/gavilan.glb';
+
+    var panel = document.getElementById('panel');
+    var mensaje = document.getElementById('mensaje');
+    var aveCoords = null;   // { lat, lng } del ave
+
+    // Distancia en metros entre dos puntos GPS
+    function distancia(lat1, lng1, lat2, lng2) {
+      var R = 6371000, rad = function (g) { return g * Math.PI / 180; };
+      var dLat = rad(lat2 - lat1), dLng = rad(lng2 - lng1);
+      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // ¿Cargaron las librerías?
+    function libreriasOk() {
+      return typeof AFRAME !== 'undefined' && AFRAME.components && AFRAME.components['gps-new-camera'] && AFRAME.components['gps-new-entity-place'];
+    }
+
+    // Crea la escena con el ave en sus coordenadas
+    function crearEscena() {
+      var html =
+        '<a-scene loading-screen="enabled: false" vr-mode-ui="enabled: false" arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false" renderer="antialias: true; alpha: true">' +
+        '<a-camera look-controls-enabled="false" arjs-device-orientation-controls="smoothingFactor: 0.1" gps-new-camera="gpsMinDistance: 1"></a-camera>' +
+        '<a-light type="ambient" intensity="1"></a-light>' +
+        '<a-light type="directional" position="1 3 2" intensity="1"></a-light>' +
+        '<a-entity id="ave" gltf-model="' + MODELO + '" ' +
+        'gps-new-entity-place="latitude: ' + aveCoords.lat + '; longitude: ' + aveCoords.lng + '" ' +
+        'scale="' + escala + ' ' + escala + ' ' + escala + '" position="0 ' + ALTURA + ' 0"></a-entity>' +
+        '</a-scene>';
+      document.getElementById('contenedor').innerHTML = html;
+    }
+
+    // ---------- Estado: todo lo que se muestra en el panel ----------
+    // Se actualiza desde el primer momento, sin esperar al GPS.
+    var estado = {
+      aframe: window.AFRAME ? AFRAME.version : 'no cargó',
+      arjs: libreriasOk() ? 'cargada ✔' : 'NO cargó ✘',
+      escena: 'creando...',
+      camara: 'esperando...',
+      modelo: 'cargando...',
+      gps: 'esperando señal...',
+      error: ''
+    };
+
+    function mostrarEstado() {
+      panel.innerHTML =
+        'A-Frame: <b>' + estado.aframe + '</b> · AR.js: <b>' + estado.arjs + '</b><br>' +
+        'Escena: <b>' + estado.escena + '</b> · Cámara: <b>' + estado.camara + '</b><br>' +
+        'Modelo: <b>' + estado.modelo + '</b> · tamaño: ' + escala.toFixed(1) + '<br>' +
+        'GPS: ' + estado.gps +
+        (estado.error ? '<br><span style="color:#ff8a80">Error: ' + estado.error + '</span>' : '');
+    }
+
+    // Cualquier error de la página se muestra en el panel
+    window.addEventListener('error', function (e) { estado.error = e.message; mostrarEstado(); });
+    window.addEventListener('unhandledrejection', function (e) {
+      estado.error = (e.reason && e.reason.message) || String(e.reason); mostrarEstado();
+    });
+    // Eventos de la cámara de AR.js
+    window.addEventListener('camera-init', function () { estado.camara = 'lista ✔'; mostrarEstado(); });
+    window.addEventListener('camera-error', function () { estado.camara = 'ERROR ✘ (¿permiso?)'; mostrarEstado(); });
+
+    // Escucha lo que pasa en la escena y con el modelo
+    function vigilarEscena() {
+      var escenaEl = document.querySelector('a-scene');
+      var aveEl = document.getElementById('ave');
+      escenaEl.addEventListener('loaded', function () { estado.escena = 'cargada ✔'; mostrarEstado(); });
+      escenaEl.addEventListener('renderstart', function () { estado.escena = 'dibujando ✔'; mostrarEstado(); });
+      aveEl.addEventListener('model-loaded', function () { estado.modelo = 'cargado ✔'; mostrarEstado(); });
+      aveEl.addEventListener('model-error', function () { estado.modelo = 'ERROR ✘ (revisa la ruta)'; mostrarEstado(); });
+    }
+
+    // GPS en vivo: ubicación, precisión y distancia real al ave
+    function seguirGps() {
+      navigator.geolocation.watchPosition(function (p) {
+        var d = distancia(p.coords.latitude, p.coords.longitude, aveCoords.lat, aveCoords.lng);
+        estado.gps = p.coords.latitude.toFixed(6) + ', ' + p.coords.longitude.toFixed(6) +
+          ' (±' + Math.round(p.coords.accuracy) + ' m) · ave a <b>' + Math.round(d) + ' m</b>';
+        mostrarEstado();
+      }, function (e) {
+        estado.gps = 'ERROR: ' + e.message;
+        mostrarEstado();
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+    }
+
+    // ---------- Botón EMPEZAR (todo dentro del mismo toque) ----------
+    document.getElementById('empezar').addEventListener('click', async function () {
+      mensaje.textContent = '';
+
+      if (!libreriasOk()) {
+        mensaje.textContent = 'No cargaron las librerías de AR.js. Revisa la conexión a internet.';
+        return;
+      }
+
+      // 1) Giroscopio en iPhone (en Android no hace falta)
+      var D = window.DeviceOrientationEvent;
+      if (D && typeof D.requestPermission === 'function') {
+        try { await D.requestPermission(); } catch (e) { /* sigue */ }
+      }
+
+      // 2) Ubicación: o viene en la dirección (?lat=&lng=), o se toma la actual
+      var latUrl = parseFloat(params.get('lat')), lngUrl = parseFloat(params.get('lng'));
+      if (!isNaN(latUrl) && !isNaN(lngUrl)) {
+        aveCoords = { lat: latUrl, lng: lngUrl };
+      } else {
+        try {
+          var pos = await new Promise(function (ok, fallo) {
+            navigator.geolocation.getCurrentPosition(ok, fallo, { enableHighAccuracy: true, timeout: 20000 });
+          });
+          // 1 grado de latitud ≈ 111.320 metros: el ave queda METROS al norte de ti
+          aveCoords = { lat: pos.coords.latitude + METROS / 111320, lng: pos.coords.longitude };
+        } catch (e) {
+          mensaje.textContent = 'No pude leer tu ubicación. Activa el GPS y da el permiso.';
+          return;
+        }
+      }
+
+      // 3) Todo listo: se crea la escena
+      document.getElementById('inicio').style.display = 'none';
+      panel.style.display = 'block';
+      document.getElementById('botones').style.display = 'flex';
+      mostrarEstado();
+      crearEscena();
+      vigilarEscena();
+      seguirGps();
+    });
+
+    // Botones de tamaño
+    function cambiarTamano(factor) {
+      escala = Math.max(0.2, escala * factor);
+      var ave = document.getElementById('ave');
+      if (ave) ave.setAttribute('scale', escala + ' ' + escala + ' ' + escala);
+      mostrarEstado();
+    }
+    document.getElementById('mas').addEventListener('click', function () { cambiarTamano(1.4); });
+    document.getElementById('menos').addEventListener('click', function () { cambiarTamano(1 / 1.4); });
+  </script>
+</body>
+
+</html>
