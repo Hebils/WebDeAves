@@ -401,3 +401,20 @@ body {
     transition: none !important;
   }
 }
+
+/* Con la escena a pantalla completa, A-Frame usa un z-index muy alto: lo nuestro debe ir por encima */
+.av-hud {
+  z-index: 2147483000;
+}
+
+.av-panel {
+  z-index: 2147483100;
+}
+
+.av-flash {
+  z-index: 2147483200;
+}
+
+.av-tarjeta-fondo {
+  z-index: 2147483300;
+}
