@@ -5,6 +5,7 @@ import './aviario.css'
 
 /* ======================================================================
    EXPERIENCIA DE RA CON GPS: el usuario es un fotógrafo de aves.
+   - La cámara del celular se ve de fondo (un <video> propio).
    - Cada ave está en unas coordenadas reales del campus (lat y lng de aves.js).
    - Al caminar hacia ella se ve más grande, como en la vida real.
    - Se busca el ave, se mantiene centrada para enfocarla y se toca el botón de foto.
@@ -91,12 +92,15 @@ function Aviario() {
   const [elegida, setElegida] = useState(null)     // opción que tocó el usuario
 
   // ---------- Referencias ----------
+  const videoRef = useRef(null)    // video de la cámara (fondo)
   const escenaRef = useRef(null)   // <a-scene>
+  const depuracionRef = useRef(null) // texto de ayuda para pruebas (solo con ?debug en la dirección)
   const avesRef = useRef({})       // elementos 3D de las aves, por id
   const anilloRef = useRef(null)   // anillo de enfoque
   const flechaRef = useRef(null)   // texto "gira a la izquierda/derecha"
   const estadoRef = useRef({ grados: 180, id: null }) // lo que se ve en vivo
   const visiblesRef = useRef([])
+  const gpsRef = useRef(null)
 
   // ---------- Aves de esta sesión ----------
   // Se eligen una sola vez: las que el usuario aún no ha capturado.
@@ -128,6 +132,7 @@ function Aviario() {
     return distanciaMetros(gps.lat, gps.lng, lugar.lat, lugar.lng) <= (a.radio ?? RADIO_POR_DEFECTO)
   })
   visiblesRef.current = visibles
+  gpsRef.current = gps
 
   function mostrarAviso(texto) {
     setAviso(texto)
@@ -148,12 +153,21 @@ function Aviario() {
       } catch { mostrarAviso('No se pudo activar el giroscopio.') }
     }
 
-    // 3) Ubicación: se sigue en vivo para saber qué aves están cerca
+    // 3) Cámara trasera como fondo
+    try {
+      const flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      videoRef.current.srcObject = flujo
+      await videoRef.current.play()
+    } catch {
+      mostrarAviso('No se pudo abrir la cámara. Revisa el permiso del navegador.')
+    }
+
+    // 4) Ubicación: se sigue en vivo para saber qué aves están cerca
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(
         (p) => {
           const punto = { lat: p.coords.latitude, lng: p.coords.longitude }
-          setGps(punto)
+          setGps({ ...punto, precision: Math.round(p.coords.accuracy) })
           setOrigen((o) => o ?? punto) // la primera ubicación se guarda para el modo demo
         },
         () => mostrarAviso('No se pudo leer tu ubicación. Activa el GPS.'),
@@ -161,16 +175,22 @@ function Aviario() {
       )
     }
 
-    // 4) Se crea la escena. AR.js abre la cámara por su cuenta al crearla.
+    // 5) Se crea la escena
     setActivo(true)
   }
 
-  // Si la cámara falla, AR.js avisa con este evento
+  // ---------- Hacer la escena transparente (para ver la cámara detrás) ----------
   useEffect(() => {
-    const alFallarCamara = () => mostrarAviso('No se pudo abrir la cámara. Revisa el permiso.')
-    window.addEventListener('camera-error', alFallarCamara)
-    return () => window.removeEventListener('camera-error', alFallarCamara)
-  }, [])
+    const escena = escenaRef.current
+    if (!activo || !escena) return
+    function hacerTransparente() {
+      escena.object3D.background = null
+      escena.renderer.setClearColor(0x000000, 0)
+    }
+    if (escena.hasLoaded) hacerTransparente()
+    else escena.addEventListener('loaded', hacerTransparente)
+    return () => escena.removeEventListener('loaded', hacerTransparente)
+  }, [activo])
 
   // ---------- Mientras se busca: revisa en cada cuadro dónde están las aves ----------
   useEffect(() => {
@@ -225,6 +245,21 @@ function Aviario() {
           mejorX = local.x
         }
       })
+
+      // Ayuda para pruebas (con ?debug): precisión del GPS y distancia del ave más cercana EN LA ESCENA.
+      // Si la distancia es 0 o no cambia al caminar, el ave no quedó bien puesta en sus coordenadas.
+      if (depuracionRef.current) {
+        let masCerca = null
+        visiblesRef.current.forEach((a) => {
+          const el = avesRef.current[a.id]
+          if (!el || !el.object3D) return
+          el.object3D.getWorldPosition(posAve)
+          const d = posCamara.distanceTo(posAve)
+          if (masCerca === null || d < masCerca) masCerca = d
+        })
+        depuracionRef.current.textContent =
+          `GPS ±${gpsRef.current?.precision ?? '?'} m · ave más cercana: ${masCerca === null ? '-' : masCerca.toFixed(1) + ' m'}`
+      }
 
       // Flecha que indica hacia dónde girar para llegar al ave más cercana
       if (flechaRef.current) {
@@ -318,15 +353,18 @@ function Aviario() {
      ==================================================================== */
   return (
     <div className="av">
-      {/* Escena de A-Frame. La escena se crea solo después del toque en "Activar cámara"
-          (así el iPhone deja pedir los permisos). AR.js pone la cámara de fondo (arjs). */}
+      {/* Fondo: la cámara del celular */}
+      <video ref={videoRef} className="av-video" playsInline muted autoPlay />
+
+      {/* Escena de A-Frame (transparente, encima de la cámara).
+          Se crea solo después del toque en "Activar cámara" (así el iPhone deja pedir los permisos). */}
       {activo && (
         <div className="av-escena">
           <a-scene
             ref={escenaRef}
+            embedded=""
             loading-screen="enabled: false"
             vr-mode-ui="enabled: false"
-            arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false"
             renderer="antialias: true; alpha: true"
           >
             <a-light type="ambient" intensity="0.9"></a-light>
@@ -371,6 +409,11 @@ function Aviario() {
           </div>
 
           <div ref={flechaRef} className="av-flecha" aria-live="polite"></div>
+
+          {/* Solo aparece si la dirección termina en ?debug */}
+          {new URLSearchParams(window.location.search).has('debug') && (
+            <div ref={depuracionRef} className="av-depuracion"></div>
+          )}
 
           {/* Anillo de enfoque y mira central */}
           <div ref={anilloRef} className={`av-anillo ${listo ? 'av-anillo--listo' : ''}`}></div>
