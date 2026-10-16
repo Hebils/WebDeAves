@@ -27,6 +27,7 @@ const SEGUNDOS_ENFOQUE = 2      // cuánto tiempo hay que mantenerla centrada
 const GRADOS_MAXIMOS_FOTO = 25  // si el ave está más lejos del centro, no sale en la foto
 
 const BASE = import.meta.env.BASE_URL
+const VERSION_CODIGO = 'v4 · cámara propia' // se ve con ?debug: sirve para saber si el celular cargó la versión nueva
 
 /* ---------- Componente de A-Frame: reproduce la animación del modelo .glb ----------
    Se usa en cada ave con el atributo animar-glb.
@@ -83,6 +84,7 @@ function Aviario() {
   const [escondidas, setEscondidas] = useState([]) // aves ya fotografiadas (desaparecen)
   const [gps, setGps] = useState(null)             // ubicación actual { lat, lng }
   const [origen, setOrigen] = useState(null)       // primera ubicación (solo para el modo demo)
+  const [errorCamara, setErrorCamara] = useState('') // mensaje si no se pudo abrir la cámara
 
   // Tarjeta del ave capturada y su quiz
   const [tarjeta, setTarjeta] = useState(null)     // ave capturada (null = sin tarjeta)
@@ -101,6 +103,7 @@ function Aviario() {
   const estadoRef = useRef({ grados: 180, id: null }) // lo que se ve en vivo
   const visiblesRef = useRef([])
   const gpsRef = useRef(null)
+  const infoRef = useRef({ permiso: '?', camara: 'sin pedir', modelosOk: 0, modelosError: 0 }) // datos para ?debug
 
   // ---------- Aves de esta sesión ----------
   // Se eligen una sola vez: las que el usuario aún no ha capturado.
@@ -134,6 +137,14 @@ function Aviario() {
   visiblesRef.current = visibles
   gpsRef.current = gps
 
+  // Cuenta cuántos modelos 3D cargaron bien o con error (se ve con ?debug)
+  function vigilarModelo(el) {
+    if (!el || el.dataset.vigilado) return
+    el.dataset.vigilado = '1'
+    el.addEventListener('model-loaded', () => { infoRef.current.modelosOk += 1 })
+    el.addEventListener('model-error', () => { infoRef.current.modelosError += 1 })
+  }
+
   function mostrarAviso(texto) {
     setAviso(texto)
     setTimeout(() => setAviso(''), 2800)
@@ -154,12 +165,23 @@ function Aviario() {
     }
 
     // 3) Cámara trasera como fondo
+    const info = infoRef.current
+    try {
+      const permiso = await navigator.permissions.query({ name: 'camera' })
+      info.permiso = permiso.state // 'prompt' = lo va a pedir, 'denied' = está bloqueado
+    } catch { info.permiso = 'no se pudo leer' }
+
     try {
       const flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
       videoRef.current.srcObject = flujo
       await videoRef.current.play()
-    } catch {
-      mostrarAviso('No se pudo abrir la cámara. Revisa el permiso del navegador.')
+      info.camara = 'abierta'
+      setErrorCamara('')
+    } catch (e) {
+      // Sin cámara no se puede jugar: se queda en esta pantalla y se explica qué hacer
+      info.camara = `ERROR ${e.name}`
+      setErrorCamara(`No se pudo abrir la cámara (${e.name}). Toca el candado junto a la dirección, entra a Permisos, permite la Cámara y vuelve a tocar el botón.`)
+      return
     }
 
     // 4) Ubicación: se sigue en vivo para saber qué aves están cerca
@@ -246,21 +268,6 @@ function Aviario() {
         }
       })
 
-      // Ayuda para pruebas (con ?debug): precisión del GPS y distancia del ave más cercana EN LA ESCENA.
-      // Si la distancia es 0 o no cambia al caminar, el ave no quedó bien puesta en sus coordenadas.
-      if (depuracionRef.current) {
-        let masCerca = null
-        visiblesRef.current.forEach((a) => {
-          const el = avesRef.current[a.id]
-          if (!el || !el.object3D) return
-          el.object3D.getWorldPosition(posAve)
-          const d = posCamara.distanceTo(posAve)
-          if (masCerca === null || d < masCerca) masCerca = d
-        })
-        depuracionRef.current.textContent =
-          `GPS ±${gpsRef.current?.precision ?? '?'} m · ave más cercana: ${masCerca === null ? '-' : masCerca.toFixed(1) + ' m'}`
-      }
-
       // Flecha que indica hacia dónde girar para llegar al ave más cercana
       if (flechaRef.current) {
         flechaRef.current.textContent =
@@ -295,6 +302,41 @@ function Aviario() {
         if (sonido && sonido.pool) sonido.pool.children.forEach((s) => s.setVolume && s.setVolume(0))
       })
     }
+  }, [activo, tarjeta])
+
+  // ---------- Ayuda para pruebas (solo con ?debug en la dirección) ----------
+  // Muestra el estado de todo cada medio segundo, para saber qué falla.
+  useEffect(() => {
+    if (!activo || tarjeta || !depuracionRef.current) return
+    const THREE = AFRAME.THREE
+    const posCamara = new THREE.Vector3()
+    const posAve = new THREE.Vector3()
+
+    const id = setInterval(() => {
+      const escena = escenaRef.current
+      const info = infoRef.current
+      let masCerca = '-'
+      if (escena && escena.camera) {
+        escena.camera.getWorldPosition(posCamara)
+        let minimo = null
+        visiblesRef.current.forEach((a) => {
+          const el = avesRef.current[a.id]
+          if (!el || !el.object3D) return
+          el.object3D.getWorldPosition(posAve)
+          const d = posCamara.distanceTo(posAve)
+          if (minimo === null || d < minimo) minimo = d
+        })
+        if (minimo !== null) masCerca = `${minimo.toFixed(1)} m`
+      }
+      depuracionRef.current.textContent = [
+        VERSION_CODIGO,
+        `Cámara: permiso ${info.permiso} · ${info.camara} · video ${videoRef.current?.videoWidth || 0}px`,
+        `Escena: ${escena && escena.canvas ? `${escena.canvas.width}x${escena.canvas.height}` : 'sin crear'}`,
+        `Modelos: ${info.modelosOk} cargados, ${info.modelosError} con error · a la vista: ${visiblesRef.current.length}`,
+        `GPS ±${gpsRef.current?.precision ?? '?'} m · ave más cercana: ${masCerca}`,
+      ].join('\n')
+    }, 500)
+    return () => clearInterval(id)
   }, [activo, tarjeta])
 
   // ---------- Botón de foto ----------
@@ -383,7 +425,7 @@ function Aviario() {
             {visibles.map((a) => (
               <a-entity
                 key={a.id}
-                ref={(el) => { avesRef.current[a.id] = el }}
+                ref={(el) => { avesRef.current[a.id] = el; vigilarModelo(el) }}
                 gltf-model={a.modelo}
                 animar-glb=""
                 look-at="#camara"
@@ -442,6 +484,7 @@ function Aviario() {
             <p>Camina por el campus, busca las aves con la cámara y tómales una foto.</p>
             <p className="av-pequeno">Te pediremos permiso para usar la cámara, la ubicación y el giroscopio.</p>
             <button type="button" className="av-btn av-btn--amarillo" onClick={activar}>Activar cámara</button>
+            {errorCamara && <p className="av-aviso-caja">{errorCamara}</p>}
             {aviso && <p className="av-aviso-caja">{aviso}</p>}
           </div>
         </div>

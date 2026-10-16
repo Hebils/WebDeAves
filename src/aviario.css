@@ -408,8 +408,9 @@ body {
   left: 12px;
   right: 12px;
   top: 96px;
-  font-size: 14px;
-  text-align: center;
+  font-size: 13px;
+  text-align: left;
+  white-space: pre-line;
   background: rgba(0, 0, 0, .65);
   border-radius: 10px;
   padding: 6px 10px;
