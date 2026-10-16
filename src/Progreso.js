@@ -1,6 +1,6 @@
 // Progreso del usuario guardado en localStorage (funciona en GitHub Pages).
 // Todo va en try/catch: en modo privado de Safari el almacenamiento puede fallar.
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AVES } from './data/aves.js'
 import { LOGROS } from './data/logros.js'
 import { PREGUNTAS_POR_AVE_EN_SUPER, aciertosParaAprobar, avesConQuiz } from './data/quiz.js'
@@ -67,6 +67,18 @@ function guardarProgreso(p) {
 export function useProgreso() {
   const [progreso, setProgreso] = useState(cargarProgreso)
   const actual = useRef(progreso) // siempre el progreso más reciente, para devolver resultados al instante
+
+    // Si otra página (p. ej. la Colección dentro de la experiencia) cambia el progreso, aquí se actualiza
+  useEffect(() => {
+    const alCambiar = (e) => {
+      if (e.key !== null && e.key !== CLAVE) return
+      const nuevo = cargarProgreso()
+      actual.current = nuevo
+      setProgreso(nuevo)
+    }
+    window.addEventListener('storage', alCambiar)
+    return () => window.removeEventListener('storage', alCambiar)
+  }, [])
 
   // Aplica un cambio, lo guarda y avisa qué logros nuevos se ganaron con ese cambio.
   const actualizar = useCallback((fn) => {

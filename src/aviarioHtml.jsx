@@ -3,6 +3,9 @@ import AFRAME from 'aframe'
 import { AVES } from './data/aves.js'
 import { useProgreso } from './Progreso.js'
 import './aviario.css'
+import MapaCampus from './MapaCampus.jsx'
+import { useUbicacion, puntoMasCercano, textoDistancia } from './ubicacion.js'
+import { EXIGIR_CERCANIA, RADIO_PUNTO, asignarAves } from './data/puntos.js'
 
 /* ======================================================================
    EXPERIENCIA DE RA: el usuario es un fotógrafo de aves.
@@ -80,6 +83,11 @@ function Aviario() {
     const [flash, setFlash] = useState(false)        // destello blanco al tomar la foto
     const [escondidas, setEscondidas] = useState([]) // aves ya fotografiadas (desaparecen)
     const [llegadas, setLlegadas] = useState([])     // aves que ya aparecieron en la escena
+    const [mapaAbierto, setMapaAbierto] = useState(false) // mapa del campus
+    const [notis, setNotis] = useState([])                // notificaciones
+    const [coleccionAbierta, setColeccionAbierta] = useState(false) // colección dentro de la experiencia
+    const [asignacion] = useState(() => asignarAves(progreso.capturadas ?? [])) // qué ave hay en cada punto (al azar)
+    const ubic = useUbicacion(activo) // GPS + modo demo
 
     // Tarjeta del ave capturada y su quiz
     const [tarjeta, setTarjeta] = useState(null)     // ave capturada (null = sin tarjeta)
@@ -101,20 +109,47 @@ function Aviario() {
     // Se eligen una sola vez: las que el usuario aún no ha capturado.
     // Si ya las capturó todas, aparecen todas de nuevo.
     const aves = useMemo(() => {
-        const capturadas = progreso.capturadas ?? []
-        const pendientes = AVES.filter((a) => !capturadas.includes(a.id))
-        const lista = pendientes.length > 0 ? pendientes : AVES
-        return lista.map((a, i) => ({ ...a, posicion: posicionAleatoria(i, lista.length) }))
-    }, [])
+    const ids = Object.values(asignacion)
+    return ids.map((id, i) => ({ ...AVES.find((a) => a.id === id), posicion: posicionAleatoria(i, ids.length) }))
+}, [])
 
     const pendientes = aves.filter((a) => !escondidas.includes(a.id))   // aún no fotografiadas
     const visibles = pendientes.filter((a) => llegadas.includes(a.id)) // las que ya aparecieron
     visiblesRef.current = visibles
 
+    // Punto de interés más cercano y si el usuario ya "llegó" a él
+    const cercano = puntoMasCercano(ubic.posicion)
+    const dentro = cercano && cercano.distancia <= RADIO_PUNTO ? cercano.punto : null
+
+    // Al llegar a un punto, aparece el ave que le tocó a ese punto
+    useEffect(() => {
+        if (!activo || !EXIGIR_CERCANIA || !dentro) return
+        const aveId = asignacion[dentro.id]
+        if (!aveId || escondidas.includes(aveId)) return
+        setLlegadas((l) => (l.includes(aveId) ? l : [...l, aveId]))
+    }, [activo, dentro?.id])
+
+    // La colección (iframe) avisa cuando el usuario toca "volver"
+    // La colección (iframe) avisa cuando el usuario toca "volver"
+    useEffect(() => {
+    const alMensaje = (e) => {
+        if (e.data?.tipo === 'cerrar-coleccion') setColeccionAbierta(false)
+    }
+    window.addEventListener('message', alMensaje)
+    return () => window.removeEventListener('message', alMensaje)
+    }, [])
+
     function mostrarAviso(texto, ms = 2800) {
     setAviso(texto)
     setTimeout(() => setAviso(''), ms)
     }
+
+    // Notificación que aparece abajo y se va sola (máximo 3 a la vez)
+    function notificar(titulo, texto, ms = 4000) {
+    const id = Date.now() + Math.random()
+    setNotis((l) => [...l.slice(-2), { id, titulo, texto, ms }])
+    setTimeout(() => setNotis((l) => l.filter((n) => n.id !== id)), ms)
+}
 
     // ---------- Hacer la escena transparente (para ver la cámara detrás) ----------
     useEffect(() => {
@@ -131,7 +166,7 @@ function Aviario() {
 
     // ---------- Las aves llegan poco a poco, en orden aleatorio ----------
     useEffect(() => {
-        if (!activo) return
+        if (!activo || EXIGIR_CERCANIA) return
         const orden = [...aves].sort(() => Math.random() - 0.5) // orden al azar
         const temporizadores = []
         let espera = 0
@@ -142,6 +177,12 @@ function Aviario() {
         })
         return () => temporizadores.forEach(clearTimeout)
     }, [activo])
+
+    // Notificación cada vez que llega un ave nueva
+    useEffect(() => {
+    if (llegadas.length === 0) return
+    notificar('¡Un ave apareció!', 'Gira despacio y búscala a tu alrededor')
+    }, [llegadas.length])
 
         // ---------- Botón "ACTIVAR PERMISOS": pide giroscopio, ubicación y cámara (dentro del mismo toque) ----------
     async function activar() {
@@ -173,14 +214,18 @@ function Aviario() {
             avisos.push('No se pudo abrir la cámara. Puedes seguir, pero verás fondo oscuro.')
         }
 
-        if (avisos.length > 0) mostrarAviso(avisos.join(' '), 5000)
+        if (avisos.length > 0) notificar('Permisos', avisos.join(' '), 6000)
         setPidiendo(false)
         setActivo(true)
-    }
+        notificar(
+        `Quedan ${aves.length} ${aves.length === 1 ? 'ave' : 'aves'}`,
+        EXIGIR_CERCANIA ? 'Acércate a un punto de interés del mapa' : 'Espera... un ave está por llegar',
+        )
+        }
 
     // ---------- Mientras se busca: revisa en cada cuadro dónde están las aves ----------
     useEffect(() => {
-        if (!activo || tarjeta) return
+        if (!activo || tarjeta || mapaAbierto || coleccionAbierta) return
         const THREE = AFRAME.THREE
         const dirCamara = new THREE.Vector3()
         const posCamara = new THREE.Vector3()
@@ -266,13 +311,13 @@ function Aviario() {
                 if (sonido && sonido.pool) sonido.pool.children.forEach((s) => s.setVolume && s.setVolume(0))
             })
         }
-    }, [activo, tarjeta])
+    }, [activo, tarjeta, mapaAbierto, coleccionAbierta])
 
     // ---------- Botón de foto ----------
     function tomarFoto() {
         const { grados, id } = estadoRef.current
         if (!id || grados > GRADOS_MAXIMOS_FOTO) {
-            mostrarAviso('No hay ningún ave en la foto. ¡Apunta hacia ella!')
+            notificar('Sin ave en la foto', '¡Apunta hacia ella y mantenla centrada!')
             return
         }
         const ave = AVES.find((a) => a.id === id)
@@ -308,6 +353,9 @@ function Aviario() {
 
     // Cierra la tarjeta: el ave fotografiada desaparece y se sigue buscando
     function cerrarTarjeta() {
+        const quedan = pendientes.length - 1
+        if (quedan > 0) notificar(`Quedan ${quedan} ${quedan === 1 ? 'ave' : 'aves'}`, 'Sigue buscando a tu alrededor')
+        else notificar('¡Fotografiaste todas!', 'Revisa tu colección')
         setEscondidas((lista) => [...lista, tarjeta.id])
         setTarjeta(null)
     }
@@ -356,42 +404,94 @@ function Aviario() {
 
             {/* ---------- Visor: lo que se ve mientras se busca ---------- */}
             {activo && !tarjeta && (
-                <div className="av-hud">
-                    <button type="button" className="av-atras" onClick={() => window.open(BASE, '_self')} aria-label="Volver al inicio">←</button>
+    <div className="av-hud">
+        {/* Cabezal: volver · logo UAO · logo Aves */}
+        <header className="av-cabezal">
+            <button type="button" className="av-cab-atras" onClick={() => window.location.assign('./index.html')} aria-label="Volver al inicio">←</button>
+            <img className="av-cab-uao" src={`${BASE}img/uao-blanco.png`} alt="Universidad Autónoma de Occidente" />
+            <img className="av-cab-ave" src={`${BASE}img/ave-logo.png`} alt="WebAves" />
+        </header>
 
-                    <div className="av-pista">
-                        {pendientes.length === 0
-                            ? <><b>¡Fotografiaste todas!</b><span>Revisa tu colección en la enciclopedia</span></>
-                            : <>
-                                <b>Quedan {pendientes.length} {pendientes.length === 1 ? 'ave' : 'aves'}</b>
-                                <span>{visibles.length > 0 ? 'Gira despacio y busca a tu alrededor' : 'Espera... un ave está por llegar'}</span>
-                            </>}
-                    </div>
+        <div className={`av-cercania ${dentro ? 'av-cercania--dentro' : ''}`} aria-live="polite">
+        {ubic.error === 'negado' ? 'Activa la ubicación para ver los puntos'
+        : !ubic.posicion ? 'Buscando tu ubicación…'
+        : dentro ? (asignacion[dentro.id] ? `¡Estás en ${dentro.nombre}!` : `${dentro.nombre}: sin ave por ahora`)
+        : ` ${cercano.punto.nombre} · a ${textoDistancia(cercano.distancia)}`}
+        {ubic.demo && ' (demo)'}
+        </div>
 
-                    <div ref={flechaRef} className="av-flecha" aria-live="polite"></div>
+        <div ref={flechaRef} className="av-flecha" aria-live="polite"></div>
 
-                    {/* Anillo de enfoque y mira central */}
-                    <div ref={anilloRef} className={`av-anillo ${listo ? 'av-anillo--listo' : ''}`}></div>
-                    <div className="av-mira"></div>
+        {/* Anillo de enfoque y mira central */}
+        <div ref={anilloRef} className={`av-anillo ${listo ? 'av-anillo--listo' : ''}`}></div>
+        <div className="av-mira"></div>
 
-                    {aviso && <div className="av-aviso">{aviso}</div>}
-
-                    <button
-                        type="button"
-                        className={`av-obturador ${listo ? 'av-obturador--listo' : ''}`}
-                        onClick={tomarFoto}
-                        disabled={visibles.length === 0}
-                        aria-label="Tomar foto"
-                    ></button>
+        {/* Notificaciones */}
+        <div className="av-notis" aria-live="polite">
+            {notis.map((n) => (
+                <div key={n.id} className="av-noti" style={{ '--vida': `${n.ms}ms` }}>
+                    <b>{n.titulo}</b>
+                    <span>{n.texto}</span>
                 </div>
-            )}
+            ))}
+        </div>
+
+        {/* Barra inferior tipo cámara: Mapa · Disparador · Colección */}
+<div className="av-barra">
+    <button type="button" className="av-barra-btn" onClick={() => setMapaAbierto(true)}>
+        <span className="av-barra-icono" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z" />
+                <circle cx="12" cy="10" r="2.5" />
+            </svg>
+        </span>
+        <span>Mapa</span>
+    </button>
+
+    <button
+        type="button"
+        className={`av-disparo ${listo ? 'av-disparo--listo' : ''}`}
+        onClick={tomarFoto}
+        disabled={visibles.length === 0}
+        aria-label="Tomar foto"
+    ></button>
+
+    <button type="button" className="av-barra-btn" onClick={() => setColeccionAbierta(true)}>
+        <span className="av-barra-icono" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+        </span>
+        <span>Colección</span>
+    </button>
+    </div>
+</div>
+)}
 
             {/* Destello al tomar la foto */}
             {flash && <div className="av-flash"></div>}
 
+            {mapaAbierto && (
+        <MapaCampus
+            asignacion={asignacion}
+            capturadas={progreso.capturadas ?? []}
+            ubic={ubic}
+            onCerrar={() => setMapaAbierto(false)}
+        />
+        )}
+
+    {/* La colección se abre encima, sin salir de la experiencia (así no se pierden cámara ni permisos) */}
+    {coleccionAbierta && (
+        <iframe className="av-coleccion" src={`${BASE}Enciclopedia.html?embebido=1`} title="Colección de aves"></iframe>
+    )}
+
             {/* ---------- Introducción: contexto de la experiencia y botón para activar permisos ---------- */}
             {!activo && (
                 <div className="av-panel">
+                    <button type="button" className="av-atras-intro" onClick={() => window.location.assign('./index.html')} aria-label="Volver al inicio">←</button>
                     <div className="av-caja av-caja--intro">
                         <img
                             className="av-intro-foto"
