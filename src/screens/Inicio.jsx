@@ -88,12 +88,14 @@ export default function Inicio({ onNavegar, onAbrirDev }) {
           <img className="titulo__img" src={TITULO_IMG} alt="WebAves UAO" />
         ) : (
           <h1 aria-label="WebAves UAO">
-            <span className="titulo__palabra" aria-hidden="true">
+            <span className="titulo__fila" aria-hidden="true">
+              <img className="titulo__ave" src={`${import.meta.env.BASE_URL}img/ave-logo.png`} alt="" />
+              <span className="titulo__palabra">
               {LETRAS.map((l, i) => (
-                <span className="letra" style={{ '--i': i }} key={i}>{l}</span>
+            <span className="letra" style={{ '--i': i }} key={i}>{l}</span>
               ))}
+              </span>
             </span>
-            {/* <span className="titulo__sub" aria-hidden="true">UAO</span> */}
           </h1>
         )}
       </header>

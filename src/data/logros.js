@@ -31,9 +31,13 @@ export const LOGROS = [
     grupo: 'quices',
     super: true,
     nombre: 'Maestro de las aves del campus',
-    descripcion: 'Supera el súper quiz con preguntas de todas las aves.',
+    descripcion: 'Aprueba el quiz de todas las aves y supera el súper quiz.',
     simbolo: '★',
     cumple: (p) => !!p.quizFinal?.completado,
+    avance: (p) => [
+      avesConQuiz(AVES).filter((a) => p.quices?.[a.id]?.completado).length + (p.quizFinal?.completado ? 1 : 0),
+      avesConQuiz(AVES).length + 1,
+    ],
   },
   ...logrosDeQuiz,
 
