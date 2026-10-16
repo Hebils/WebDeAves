@@ -30,7 +30,7 @@ const SEGUNDOS_ENFOQUE = 2      // cuánto tiempo hay que mantenerla centrada
 const GRADOS_MAXIMOS_FOTO = 25  // si el ave está más lejos del centro, no sale en la foto
 
 const BASE = import.meta.env.BASE_URL
-const VERSION_CODIGO = 'v5 · cámara HD + estabilidad' // se ve con ?debug: sirve para saber si el celular cargó la versión nueva
+const VERSION_CODIGO = 'v6 · medidas de pantalla' // se ve con ?debug: sirve para saber si el celular cargó la versión nueva
 
 /* ---------- Componente de A-Frame: reproduce la animación del modelo .glb ----------
    Se usa en cada ave con el atributo animar-glb.
@@ -352,6 +352,7 @@ function Aviario() {
         `Escena: ${escena && escena.canvas ? `${escena.canvas.width}x${escena.canvas.height}` : 'sin crear'}`,
         `Modelos: ${info.modelosOk} cargados, ${info.modelosError} con error · a la vista: ${visiblesRef.current.length}`,
         `GPS ±${gpsRef.current?.precision ?? '?'} m · ave más cercana: ${masCerca}`,
+        `Pantalla: ventana ${window.innerWidth}x${window.innerHeight} · visible ${Math.round(window.visualViewport?.width || 0)}x${Math.round(window.visualViewport?.height || 0)} (zoom ${(window.visualViewport?.scale || 1).toFixed(2)}) · visor ${document.querySelector('.av')?.clientWidth}x${document.querySelector('.av')?.clientHeight}`,
         `WebGL: ${info.contextoPerdido ? 'PERDIDO (sin memoria)' : 'ok'} · memoria JS: ${performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + ' MB' : 'n/d'}`,
       ].join('\n')
     }, 500)
