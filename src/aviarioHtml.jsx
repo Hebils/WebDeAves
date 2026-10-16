@@ -84,6 +84,8 @@ function Aviario() {
   // ---------- Estados ----------
   const { progreso, capturar, completarQuiz } = useProgreso()
   const [activo, setActivo] = useState(false)      // false = pantalla "Activar cámara"
+  const [solicitandoCamara, setSolicitandoCamara] = useState(false)
+  const [movimientoActivo, setMovimientoActivo] = useState(false)
   const [aviso, setAviso] = useState('')           // mensaje corto
   const [listo, setListo] = useState(false)        // true cuando el ave está bien enfocada
   const [flash, setFlash] = useState(false)        // destello blanco al tomar la foto
@@ -170,6 +172,8 @@ function Aviario() {
   // ---------- Botón "Activar cámara": pide los permisos (dentro del mismo toque) ----------
   async function activar() {
     const info = infoRef.current
+    setErrorCamara('')
+    setSolicitandoCamara(true)
 
     // Iniciar getUserMedia antes de cualquier await conserva el gesto del
     // usuario requerido por Safari/iOS para mostrar el permiso de cámara.
@@ -191,22 +195,19 @@ function Aviario() {
         audio: false,
       })
     } catch (e) {
+      setSolicitandoCamara(false)
       info.camara = `ERROR ${e.name}`
       setErrorCamara(mensajeErrorCamara(e))
       return
     }
 
-    // 1) Desbloquear el audio (los navegadores solo lo permiten después de un toque)
-    try { AFRAME.THREE.AudioContext.getContext().resume() } catch { /* sigue */ }
+    // Si el navegador no muestra el diálogo, explicar cómo revisar el permiso.
+    const temporizadorAyuda = setTimeout(() => {
+      setErrorCamara('¿No apareció el permiso? Revisa en los ajustes del navegador que este sitio tenga permitida la cámara y vuelve a intentarlo.')
+    }, 8000)
 
-    // 2) Giroscopio en iPhone: pide permiso. En Android no hace falta.
-    const D = window.DeviceOrientationEvent
-    if (D && typeof D.requestPermission === 'function') {
-      try {
-        const respuesta = await D.requestPermission()
-        if (respuesta !== 'granted') mostrarAviso('Sin giroscopio no podrás girar el celular para buscar aves.')
-      } catch { mostrarAviso('No se pudo activar el giroscopio.') }
-    }
+    // Desbloquear el audio (los navegadores solo lo permiten después de un toque).
+    try { AFRAME.THREE.AudioContext.getContext().resume() } catch { /* sigue */ }
 
     // 3) Cámara trasera como fondo
     try {
@@ -221,6 +222,8 @@ function Aviario() {
       info.camara = 'abierta'
       setErrorCamara('')
     } catch (e) {
+      clearTimeout(temporizadorAyuda)
+      setSolicitandoCamara(false)
       const flujo = videoRef.current?.srcObject
       flujo?.getTracks().forEach((track) => track.stop())
       if (videoRef.current) videoRef.current.srcObject = null
@@ -229,6 +232,8 @@ function Aviario() {
       setErrorCamara(mensajeErrorCamara(e))
       return
     }
+    clearTimeout(temporizadorAyuda)
+    setSolicitandoCamara(false)
 
     // 4) Ubicación: se sigue en vivo para saber qué aves están cerca
     if (navigator.geolocation) {
@@ -246,6 +251,21 @@ function Aviario() {
 
     // 5) Se crea la escena
     setActivo(true)
+
+  }
+
+  // iOS exige una acción explícita para habilitar el giroscopio. Se solicita
+  // por separado para que no compita con el permiso de cámara.
+  async function activarMovimiento() {
+    const D = window.DeviceOrientationEvent
+    if (!D || typeof D.requestPermission !== 'function') return
+    try {
+      const respuesta = await D.requestPermission()
+      if (respuesta === 'granted') setMovimientoActivo(true)
+      else mostrarAviso('Sin giroscopio no podrás girar el celular para buscar aves.')
+    } catch {
+      mostrarAviso('No se pudo activar el giroscopio. Revisa los permisos de movimiento del navegador.')
+    }
   }
 
   function mensajeErrorCamara(error) {
@@ -519,6 +539,12 @@ function Aviario() {
               : <><b>Quedan {pendientes.length} {pendientes.length === 1 ? 'ave' : 'aves'}</b><span>{textoPista()}</span></>}
           </div>
 
+          {typeof window.DeviceOrientationEvent?.requestPermission === 'function' && !movimientoActivo && (
+            <button type="button" className="av-activar-movimiento" onClick={activarMovimiento}>
+              Activar movimiento
+            </button>
+          )}
+
           <div ref={flechaRef} className="av-flecha" aria-live="polite"></div>
 
           {/* Solo aparece si la dirección termina en ?debug */}
@@ -551,8 +577,10 @@ function Aviario() {
           <div className="av-caja">
             <h1>Fotógrafo de aves</h1>
             <p>Camina por el campus, busca las aves con la cámara y tómales una foto.</p>
-            <p className="av-pequeno">Te pediremos permiso para usar la cámara, la ubicación y el giroscopio.</p>
-            <button type="button" className="av-btn av-btn--amarillo" onClick={activar}>Activar cámara</button>
+            <p className="av-pequeno">Te pediremos permiso para usar la cámara y la ubicación. En iPhone podrás habilitar el movimiento después.</p>
+            <button type="button" className="av-btn av-btn--amarillo" onClick={activar} disabled={solicitandoCamara}>
+              {solicitandoCamara ? 'Solicitando permiso…' : 'Activar cámara'}
+            </button>
             {errorCamara && <p className="av-aviso-caja">{errorCamara}</p>}
             {aviso && <p className="av-aviso-caja">{aviso}</p>}
           </div>
