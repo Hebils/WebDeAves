@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AVES } from './data/aves.js'
 import { useProgreso } from './Progreso.js'
-import AFRAME from 'aframe';
 import './aviario.css'
+
+// aviario.html carga A-Frame y AR.js como scripts globales. Usar esa misma
+// instancia evita registrar componentes en una copia distinta de A-Frame.
+const AFRAME = window.AFRAME
 
 /* ======================================================================
    EXPERIENCIA DE RA CON GPS: el usuario es un fotógrafo de aves.
@@ -108,6 +111,15 @@ function Aviario() {
   const gpsRef = useRef(null)
   const infoRef = useRef({ permiso: '?', camara: 'sin pedir', modelosOk: 0, modelosError: 0, contextoPerdido: false }) // datos para ?debug
 
+  // Liberar la cámara si se abandona la pantalla o se desmonta el componente.
+  useEffect(() => () => {
+    const video = videoRef.current
+    if (video?.srcObject) {
+      video.srcObject.getTracks().forEach((track) => track.stop())
+      video.srcObject = null
+    }
+  }, [])
+
   // ---------- Aves de esta sesión ----------
   // Se eligen una sola vez: las que el usuario aún no ha capturado.
   // Si ya las capturó todas, entran todas de nuevo.
@@ -157,6 +169,33 @@ function Aviario() {
 
   // ---------- Botón "Activar cámara": pide los permisos (dentro del mismo toque) ----------
   async function activar() {
+    const info = infoRef.current
+
+    // Iniciar getUserMedia antes de cualquier await conserva el gesto del
+    // usuario requerido por Safari/iOS para mostrar el permiso de cámara.
+    let solicitudCamara
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(window.isSecureContext
+          ? 'CAMARA_NO_DISPONIBLE'
+          : 'HTTPS_REQUERIDO')
+      }
+
+      const vertical = window.innerHeight > window.innerWidth
+      solicitudCamara = navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: vertical ? 1080 : 1920 },
+          height: { ideal: vertical ? 1920 : 1080 },
+        },
+        audio: false,
+      })
+    } catch (e) {
+      info.camara = `ERROR ${e.name}`
+      setErrorCamara(mensajeErrorCamara(e))
+      return
+    }
+
     // 1) Desbloquear el audio (los navegadores solo lo permiten después de un toque)
     try { AFRAME.THREE.AudioContext.getContext().resume() } catch { /* sigue */ }
 
@@ -170,32 +209,24 @@ function Aviario() {
     }
 
     // 3) Cámara trasera como fondo
-    const info = infoRef.current
     try {
-      const permiso = await navigator.permissions.query({ name: 'camera' })
-      info.permiso = permiso.state // 'prompt' = lo va a pedir, 'denied' = está bloqueado
-    } catch { info.permiso = 'no se pudo leer' }
-
-    try {
-      // Se pide alta resolución con la proporción de la pantalla; si no se pide, el celular da 640x480
-      // y se ve borroso y con zoom al estirarlo a pantalla completa.
-      const vertical = window.innerHeight > window.innerWidth
-      const flujo = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: vertical ? 1080 : 1920 },
-          height: { ideal: vertical ? 1920 : 1080 },
-        },
-        audio: false,
-      })
+      const flujo = await solicitudCamara
+      if (!videoRef.current) {
+        flujo.getTracks().forEach((track) => track.stop())
+        return
+      }
       videoRef.current.srcObject = flujo
       await videoRef.current.play()
+      info.permiso = 'granted'
       info.camara = 'abierta'
       setErrorCamara('')
     } catch (e) {
-      // Sin cámara no se puede jugar: se queda en esta pantalla y se explica qué hacer
+      const flujo = videoRef.current?.srcObject
+      flujo?.getTracks().forEach((track) => track.stop())
+      if (videoRef.current) videoRef.current.srcObject = null
       info.camara = `ERROR ${e.name}`
-      setErrorCamara(`No se pudo abrir la cámara (${e.name}). Toca el candado junto a la dirección, entra a Permisos, permite la Cámara y vuelve a tocar el botón.`)
+      info.permiso = e.name === 'NotAllowedError' ? 'denied' : 'sin conceder'
+      setErrorCamara(mensajeErrorCamara(e))
       return
     }
 
@@ -215,6 +246,22 @@ function Aviario() {
 
     // 5) Se crea la escena
     setActivo(true)
+  }
+
+  function mensajeErrorCamara(error) {
+    if (error.message === 'HTTPS_REQUERIDO') {
+      return 'La cámara requiere una conexión segura. Abre esta experiencia desde HTTPS (o desde localhost durante el desarrollo).'
+    }
+    if (error.message === 'CAMARA_NO_DISPONIBLE' || error.name === 'NotFoundError') {
+      return 'Este dispositivo no tiene una cámara disponible para usar.'
+    }
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      return 'No se permitió usar la cámara. Revisa los permisos del sitio y vuelve a tocar “Activar cámara”.'
+    }
+    if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      return 'La cámara está ocupada por otra aplicación. Ciérrala e inténtalo de nuevo.'
+    }
+    return `No se pudo abrir la cámara (${error.name || 'error desconocido'}). Revisa los permisos del sitio e inténtalo de nuevo.`
   }
 
   // ---------- Hacer la escena transparente (para ver la cámara detrás) ----------
