@@ -22,6 +22,9 @@ body {
   color: #fff;
   text-align: left;
   font-family: 'Fredoka', system-ui, sans-serif;
+  touch-action: none;
+  /* evita que el navegador haga zoom o mueva la página con los dedos */
+  overscroll-behavior: none;
 }
 
 .av *,
