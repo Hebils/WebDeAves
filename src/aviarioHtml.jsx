@@ -22,12 +22,15 @@ const MODO_DEMO = true          // true = las aves sin coordenadas aparecen a 8�
 const ESCALA_AVE = 3            // tamaño de los modelos 3D (sube o baja según se vean)
 const ALTURA_AVE = 1            // altura del ave sobre el suelo, en metros
 const RADIO_POR_DEFECTO = 25    // a cuántos metros aparece un ave si no tiene "radio" en aves.js
+const MAX_AVES_A_LA_VEZ = 2     // máximo de modelos 3D en la escena (menos memoria = menos cierres)
+const PRECISION_MINIMA = 25     // el GPS debe tener un error menor a estos metros antes de colocar las aves (modo demo)
+const FOV_CAMARA = 65           // ángulo de visión de la cámara 3D; debe parecerse al de la cámara real para que el ave "pegue" con el fondo
 const GRADOS_ENFOQUE = 10       // qué tan centrada debe estar el ave para enfocarla
 const SEGUNDOS_ENFOQUE = 2      // cuánto tiempo hay que mantenerla centrada
 const GRADOS_MAXIMOS_FOTO = 25  // si el ave está más lejos del centro, no sale en la foto
 
 const BASE = import.meta.env.BASE_URL
-const VERSION_CODIGO = 'v4 · cámara propia' // se ve con ?debug: sirve para saber si el celular cargó la versión nueva
+const VERSION_CODIGO = 'v5 · cámara HD + estabilidad' // se ve con ?debug: sirve para saber si el celular cargó la versión nueva
 
 /* ---------- Componente de A-Frame: reproduce la animación del modelo .glb ----------
    Se usa en cada ave con el atributo animar-glb.
@@ -103,7 +106,7 @@ function Aviario() {
   const estadoRef = useRef({ grados: 180, id: null }) // lo que se ve en vivo
   const visiblesRef = useRef([])
   const gpsRef = useRef(null)
-  const infoRef = useRef({ permiso: '?', camara: 'sin pedir', modelosOk: 0, modelosError: 0 }) // datos para ?debug
+  const infoRef = useRef({ permiso: '?', camara: 'sin pedir', modelosOk: 0, modelosError: 0, contextoPerdido: false }) // datos para ?debug
 
   // ---------- Aves de esta sesión ----------
   // Se eligen una sola vez: las que el usuario aún no ha capturado.
@@ -127,13 +130,15 @@ function Aviario() {
   }, [aves, origen])
 
   // ---------- Aves que se ven ahora ----------
-  // Solo las que no se han fotografiado y están dentro de su radio de aparición.
+  // Solo las que no se han fotografiado y están dentro de su radio de aparición (máximo MAX_AVES_A_LA_VEZ).
   const pendientes = aves.filter((a) => !escondidas.includes(a.id))
-  const visibles = pendientes.filter((a) => {
-    const lugar = lugares[a.id]
-    if (!gps || !lugar) return false
-    return distanciaMetros(gps.lat, gps.lng, lugar.lat, lugar.lng) <= (a.radio ?? RADIO_POR_DEFECTO)
-  })
+  const visibles = pendientes
+    .filter((a) => {
+      const lugar = lugares[a.id]
+      if (!gps || !lugar) return false
+      return distanciaMetros(gps.lat, gps.lng, lugar.lat, lugar.lng) <= (a.radio ?? RADIO_POR_DEFECTO)
+    })
+    .slice(0, MAX_AVES_A_LA_VEZ)
   visiblesRef.current = visibles
   gpsRef.current = gps
 
@@ -172,7 +177,17 @@ function Aviario() {
     } catch { info.permiso = 'no se pudo leer' }
 
     try {
-      const flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      // Se pide alta resolución con la proporción de la pantalla; si no se pide, el celular da 640x480
+      // y se ve borroso y con zoom al estirarlo a pantalla completa.
+      const vertical = window.innerHeight > window.innerWidth
+      const flujo = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: vertical ? 1080 : 1920 },
+          height: { ideal: vertical ? 1920 : 1080 },
+        },
+        audio: false,
+      })
       videoRef.current.srcObject = flujo
       await videoRef.current.play()
       info.camara = 'abierta'
@@ -190,7 +205,8 @@ function Aviario() {
         (p) => {
           const punto = { lat: p.coords.latitude, lng: p.coords.longitude }
           setGps({ ...punto, precision: Math.round(p.coords.accuracy) })
-          setOrigen((o) => o ?? punto) // la primera ubicación se guarda para el modo demo
+          // Para el modo demo se guarda la primera ubicación PRECISA (la primera lectura suele ser mala)
+          if (p.coords.accuracy <= PRECISION_MINIMA) setOrigen((o) => o ?? punto)
         },
         () => mostrarAviso('No se pudo leer tu ubicación. Activa el GPS.'),
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 },
@@ -208,6 +224,8 @@ function Aviario() {
     function hacerTransparente() {
       escena.object3D.background = null
       escena.renderer.setClearColor(0x000000, 0)
+      // Si el celular se queda sin memoria gráfica, el navegador pierde el "contexto" y la escena se congela
+      escena.canvas.addEventListener('webglcontextlost', () => { infoRef.current.contextoPerdido = true })
     }
     if (escena.hasLoaded) hacerTransparente()
     else escena.addEventListener('loaded', hacerTransparente)
@@ -334,6 +352,7 @@ function Aviario() {
         `Escena: ${escena && escena.canvas ? `${escena.canvas.width}x${escena.canvas.height}` : 'sin crear'}`,
         `Modelos: ${info.modelosOk} cargados, ${info.modelosError} con error · a la vista: ${visiblesRef.current.length}`,
         `GPS ±${gpsRef.current?.precision ?? '?'} m · ave más cercana: ${masCerca}`,
+        `WebGL: ${info.contextoPerdido ? 'PERDIDO (sin memoria)' : 'ok'} · memoria JS: ${performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) + ' MB' : 'n/d'}`,
       ].join('\n')
     }, 500)
     return () => clearInterval(id)
@@ -386,8 +405,9 @@ function Aviario() {
   // Texto de ayuda del visor
   function textoPista() {
     if (!gps) return 'Buscando tu ubicación...'
-    if (visibles.length === 0) return 'Camina por el campus para encontrar aves'
-    return 'Gira despacio y busca a tu alrededor'
+    if (visibles.length > 0) return 'Gira despacio y busca a tu alrededor'
+    if (MODO_DEMO && !origen) return `Esperando un GPS más preciso (±${gps.precision} m)...`
+    return 'Camina por el campus para encontrar aves'
   }
 
   /* ====================================================================
@@ -407,7 +427,7 @@ function Aviario() {
             embedded=""
             loading-screen="enabled: false"
             vr-mode-ui="enabled: false"
-            renderer="antialias: true; alpha: true"
+            renderer="antialias: false; alpha: true"
           >
             <a-light type="ambient" intensity="0.9"></a-light>
             <a-light type="directional" position="1 3 2" intensity="1"></a-light>
@@ -415,9 +435,10 @@ function Aviario() {
             {/* Cámara con GPS: se mueve por el mapa al caminar y gira con el giroscopio */}
             <a-camera
               id="camara"
+              fov={FOV_CAMARA}
               look-controls-enabled="false"
               arjs-device-orientation-controls="smoothingFactor: 0.1"
-              gps-new-camera="gpsMinDistance: 1"
+              gps-new-camera="gpsMinDistance: 5; positionMinAccuracy: 25"
             ></a-camera>
 
             {/* Las aves: cada una queda fija en sus coordenadas (gps-new-entity-place).
