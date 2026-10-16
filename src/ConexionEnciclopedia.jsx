@@ -34,11 +34,30 @@ function ConexionEnciclopedia() {
     if (nueva) setSeleccionId(nueva.id)
   }
 
-  // Volver a la portada: si hay página anterior, se usa "atrás";
-  // si no (abrieron esta página directo), se abre la portada
+    // ¿Esta página está dentro de la experiencia (iframe)?
+  let embebida = new URLSearchParams(window.location.search).get('embebido') === '1'
+  try {
+    if (window.self !== window.top) embebida = true
+  } catch {
+    embebida = true // si el navegador no deja mirar, es que está dentro de otra página
+  }
+
+  // Botón "←": dentro de la experiencia solo se cierra la Colección; suelta, vuelve al menú principal
   function volverAlInicio() {
-    if (window.history.length > 1) window.history.back()
-    else window.open(import.meta.env.BASE_URL, '_self')
+    if (embebida) {
+      window.parent.postMessage({ tipo: 'cerrar-coleccion' }, '*')
+      return
+    }
+    window.location.assign('./index.html')
+  }
+
+  // Botón "Ir al recorrido": dentro de la experiencia cierra la Colección; suelta, abre la experiencia
+  function irAlRecorrido() {
+    if (embebida) {
+      window.parent.postMessage({ tipo: 'cerrar-coleccion' }, '*')
+      return
+    }
+    window.location.assign('./aviario.html')
   }
 
   // ---------- Quices ----------
@@ -103,7 +122,7 @@ function ConexionEnciclopedia() {
       onCerrar={() => setSeleccionId(null)}
       onNavegar={navegar}
       onVolver={volverAlInicio}
-      onIniciar={volverAlInicio}
+      onIniciar={irAlRecorrido}
       onQuiz={abrirQuizDeAve}
       onSuperQuiz={abrirSuperQuiz}
     />
