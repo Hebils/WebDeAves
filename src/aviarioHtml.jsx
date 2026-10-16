@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AVES } from './data/aves.js'
 import { useProgreso } from './Progreso.js'
-import { useState } from 'react'
 import AFRAME from 'aframe';
 import './aviario.css'
 
@@ -17,7 +16,6 @@ import './aviario.css'
    por eso aquí se usa window.AFRAME.
    ====================================================================== */
 
-const AFRAME = window.AFRAME
 
 // ---------- Ajustes (se pueden cambiar fácil) ----------
 const MODO_DEMO = true          // true = las aves sin coordenadas aparecen a 8–16 m de ti (para probar)
