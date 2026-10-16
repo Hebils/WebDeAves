@@ -54,10 +54,27 @@ function posicionAleatoria(i, total) {
     return `${x.toFixed(2)} ${y.toFixed(2)} ${z.toFixed(2)}`
 }
 
+// Pide el permiso de ubicación (el navegador muestra su aviso).
+// Devuelve false solo si el usuario lo negó o no hubo respuesta; si el GPS tarda o falla, el permiso sí estaba dado.
+function pedirUbicacion() {
+    return new Promise((resolver) => {
+        if (!('geolocation' in navigator)) return resolver(false)
+        // Algunos navegadores (por ejemplo dentro de apps de mensajería) nunca responden: no se espera para siempre
+        const espera = setTimeout(() => resolver(false), 12000)
+        const terminar = (ok) => { clearTimeout(espera); resolver(ok) }
+        navigator.geolocation.getCurrentPosition(
+            () => terminar(true),
+            (error) => terminar(error.code !== 1), // 1 = permiso negado
+            { enableHighAccuracy: false, timeout: 6000, maximumAge: 600000 },
+        )
+    })
+}
+
 function Aviario() {
     // ---------- Estados ----------
     const { progreso, capturar, completarQuiz } = useProgreso()
     const [activo, setActivo] = useState(false)      // false = pantalla "Activar cámara"
+    const [pidiendo, setPidiendo] = useState(false)  // true mientras se piden los permisos
     const [aviso, setAviso] = useState('')           // mensaje corto
     const [listo, setListo] = useState(false)        // true cuando el ave está bien enfocada
     const [flash, setFlash] = useState(false)        // destello blanco al tomar la foto
@@ -94,9 +111,9 @@ function Aviario() {
     const visibles = pendientes.filter((a) => llegadas.includes(a.id)) // las que ya aparecieron
     visiblesRef.current = visibles
 
-    function mostrarAviso(texto) {
-        setAviso(texto)
-        setTimeout(() => setAviso(''), 2800)
+    function mostrarAviso(texto, ms = 2800) {
+    setAviso(texto)
+    setTimeout(() => setAviso(''), ms)
     }
 
     // ---------- Hacer la escena transparente (para ver la cámara detrás) ----------
@@ -126,29 +143,38 @@ function Aviario() {
         return () => temporizadores.forEach(clearTimeout)
     }, [activo])
 
-    // ---------- Botón "Activar cámara": pide los permisos (dentro del mismo toque) ----------
+        // ---------- Botón "ACTIVAR PERMISOS": pide giroscopio, ubicación y cámara (dentro del mismo toque) ----------
     async function activar() {
+        if (pidiendo) return
+        setPidiendo(true)
+        const avisos = [] // lo que no se pudo activar
+
         // 1) Desbloquear el audio (los navegadores solo lo permiten después de un toque)
         try { AFRAME.THREE.AudioContext.getContext().resume() } catch { /* sigue */ }
 
-        // 2) Giroscopio en iPhone: pide permiso. En Android no hace falta.
+        // 2) Giroscopio (iPhone)
         const D = window.DeviceOrientationEvent
         if (D && typeof D.requestPermission === 'function') {
             try {
                 const respuesta = await D.requestPermission()
-                if (respuesta !== 'granted') mostrarAviso('Sin giroscopio no podrás girar el celular para buscar aves.')
-            } catch { mostrarAviso('No se pudo activar el giroscopio.') }
+                if (respuesta !== 'granted') avisos.push('Sin giroscopio no podrás girar el celular para buscar aves.')
+            } catch { avisos.push('No se pudo activar el giroscopio.') }
         }
 
-        // 3) Cámara trasera como fondo
+        // 3) Ubicación
+        if (!(await pedirUbicacion())) avisos.push('Sin ubicación no podremos ubicarte en el campus.')
+
+        // 4) Cámara trasera como fondo
         try {
             const flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
             videoRef.current.srcObject = flujo
             await videoRef.current.play()
         } catch {
-            mostrarAviso('No se pudo abrir la cámara. Puedes seguir, pero verás fondo oscuro.')
+            avisos.push('No se pudo abrir la cámara. Puedes seguir, pero verás fondo oscuro.')
         }
 
+        if (avisos.length > 0) mostrarAviso(avisos.join(' '), 5000)
+        setPidiendo(false)
         setActivo(true)
     }
 
@@ -275,7 +301,7 @@ function Aviario() {
             setNumPregunta((n) => n + 1)
             setElegida(null)
         } else {
-            completarQuiz(tarjeta.id, puntos) // guarda el puntaje del quiz
+            completarQuiz(tarjeta.id, puntos, preguntas.length)
             setPaso('fin')
         }
     }
@@ -363,15 +389,40 @@ function Aviario() {
             {/* Destello al tomar la foto */}
             {flash && <div className="av-flash"></div>}
 
-            {/* ---------- Pantalla para activar la cámara (el iPhone exige un toque) ---------- */}
+            {/* ---------- Introducción: contexto de la experiencia y botón para activar permisos ---------- */}
             {!activo && (
                 <div className="av-panel">
-                    <div className="av-caja">
-                        <h1>Fotógrafo de aves</h1>
-                        <p>Busca las aves con la cámara y tómales una foto.</p>
-                        <p className="av-pequeno">Te pediremos permiso para usar la cámara y el giroscopio.</p>
-                        <button type="button" className="av-btn av-btn--amarillo" onClick={activar}>Activar cámara</button>
-                        {aviso && <p className="av-aviso-caja">{aviso}</p>}
+                    <div className="av-caja av-caja--intro">
+                        <img
+                            className="av-intro-foto"
+                            src={`${BASE}img/camara.png`}
+                            alt="Manos sosteniendo una cámara fotográfica que muestra un loro verde en la pantalla"
+                        />
+                        <div className="av-intro-cuerpo">
+                            <h1>Fotógrafo de aves</h1>
+                            <p className="av-intro-lead">Convierte tu celular en una cámara y descubre las aves que viven en el campus de la UAO.</p>
+                            <p>Las aves aparecen a tu alrededor en realidad aumentada. Gira despacio para buscarlas, escucha sus cantos y fotografíalas para sumarlas a tu enciclopedia.</p>
+
+                            <h2>Cómo se juega</h2>
+                            <ol className="av-pasos">
+                                <li>Gira el celular para buscar. Una flecha te indica hacia dónde ir.</li>
+                                <li>Centra el ave en el anillo y mantenla quieta un par de segundos para enfocarla.</li>
+                                <li>Toca el botón de foto para capturarla.</li>
+                                <li>Lee su ficha y, si quieres, responde su quiz para ganar logros.</li>
+                            </ol>
+
+                            <h2>Permisos que necesitamos</h2>
+                            <ul className="av-permisos">
+                                <li><b>Cámara</b><span>Para ver el campus detrás de las aves.</span></li>
+                                <li><b>Ubicación</b><span>Para ubicarte en el campus.</span></li>
+                                <li><b>Giroscopio</b><span>Para saber hacia dónde apuntas el celular.</span></li>
+                            </ul>
+
+                            <button type="button" className="av-btn av-btn--amarillo" onClick={activar} disabled={pidiendo}>
+                                {pidiendo ? 'ACTIVANDO…' : 'ACTIVAR PERMISOS'}
+                            </button>
+                            {aviso && <p className="av-aviso-caja">{aviso}</p>}
+                        </div>
                     </div>
                 </div>
             )}

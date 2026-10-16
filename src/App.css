@@ -25,9 +25,10 @@
 
 /* ---------- Título: el recuadro se dibuja y las letras caen ---------- */
 .titulo {
+  --t: clamp(2.7rem, 13.5vw, 4.8rem); /* tamaño del título (el ave se calcula a partir de este) */
   position: relative;
-  width: min(100%, 420px);
-  padding: 1.6rem 1rem 1.3rem;
+  width: min(100%, 540px);
+  padding: 1.6rem 1.25rem 1.4rem;
 }
 
 .titulo__img {
@@ -59,7 +60,7 @@
 
 .titulo__palabra {
   display: block;
-  font-size: clamp(2.2rem, 11.5vw, 3.8rem);
+  font-size: var(--t);
   font-weight: 700;
   letter-spacing: .02em;
   white-space: nowrap;
@@ -67,8 +68,32 @@
 
 .letra {
   display: inline-block;
-  animation: caer .7s cubic-bezier(.34, 1.56, .64, 1) backwards;
-  animation-delay: calc(.6s + var(--i) * .07s);
+  /* 1) caen al entrar  2) cada tanto saltan en ola, de izquierda a derecha */
+  animation:
+    caer .7s cubic-bezier(.34, 1.56, .64, 1) backwards,
+    ola 7s ease-in-out infinite;
+  animation-delay:
+    calc(.6s + var(--i) * .07s),
+    calc(4s + var(--i) * .09s);
+}
+
+/* Fila: logo del ave a la izquierda y la palabra AviUAO */
+.titulo__fila {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+}
+
+.titulo__ave {
+  flex: none;
+  height: calc(var(--t) * 1.3);
+  width: auto;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, .28));
+  /* entra volando desde la izquierda y luego flota suave */
+  animation:
+    ave-entra .9s cubic-bezier(.34, 1.56, .64, 1) .3s backwards,
+    ave-flota 3.6s ease-in-out 1.4s infinite;
 }
 
 .titulo__sub {
@@ -255,6 +280,21 @@
     opacity: 1;
     transform: none;
   }
+}
+
+@keyframes ave-entra {
+  from { opacity: 0; transform: translate(-46px, 16px) rotate(-18deg) scale(.8); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes ave-flota {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50%      { transform: translateY(-6px) rotate(-3deg); }
+}
+
+@keyframes ola {
+  0%, 14%, 100% { transform: translateY(0); }
+  7%            { transform: translateY(-.14em); }
 }
 
 @keyframes aparecer {

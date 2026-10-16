@@ -73,8 +73,8 @@ body {
     inset: 0;
     z-index: 20;
     background: var(--a-uao);
-    display: grid;
-    place-items: center;
+    display: flex;
+    overflow-y: auto;
     padding: 16px;
 }
 
@@ -117,6 +117,7 @@ body {
 
 /* ----- Pantalla "Activar cámara" ----- */
 .av-caja {
+    margin: auto;
     background: #fff;
     color: #3a0009;
     border-radius: 24px;
@@ -399,4 +400,88 @@ body {
         animation: none !important;
         transition: none !important;
     }
+}
+
+/* ----- Introducción (foto de cámara, contexto y permisos) ----- */
+.av-caja--intro {
+    max-width: 460px;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+    border-top: 0;
+}
+
+.av-intro-foto {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    object-position: center 35%;
+    border-bottom: 8px solid var(--a-oro);
+}
+
+.av-intro-cuerpo {
+    display: grid;
+    gap: 14px;
+    padding: 20px 20px 22px;
+}
+
+.av-intro-lead {
+    font-size: 20px !important;
+    font-weight: 600;
+    color: var(--a-uao);
+}
+
+.av-intro-cuerpo h2 {
+    margin: 6px 0 0;
+    padding-top: 14px;
+    border-top: 2px dashed #e8c3ca;
+    font-size: 20px;
+    line-height: 1.2;
+    color: var(--a-uao);
+}
+
+.av-pasos {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding-left: 24px;
+    font-size: 17px;
+    line-height: 1.4;
+}
+
+.av-pasos li::marker {
+    font-weight: 700;
+    color: var(--a-uao);
+}
+
+.av-permisos {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.av-permisos li {
+    display: grid;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: #fbeff1;
+    font-size: 16px;
+    line-height: 1.35;
+}
+
+.av-permisos b {
+    color: var(--a-uao);
+    font-size: 17px;
+}
+
+.av-intro-cuerpo .av-btn {
+    margin-top: 4px;
+}
+
+.av-btn:disabled {
+    opacity: .6;
+    cursor: default;
 }
