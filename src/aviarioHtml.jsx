@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AVES } from './data/aves.js'
 import { useProgreso } from './Progreso.js'
+import { useState } from 'react'
+import AFRAME from 'aframe';
 import './aviario.css'
 
 /* ======================================================================
@@ -574,3 +576,4 @@ function Aviario() {
 }
 
 export default Aviario
+
