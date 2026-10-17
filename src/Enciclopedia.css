@@ -1,9 +1,9 @@
 /* ===== Enciclopedia — hereda variables de index.css (--uao, --uao-dark, --uao-glow, --acento) ===== */
 .enc {
   --e-uao: var(--uao, #880015);
-  --e-dark: var(--uao-dark, #5e000e);
+  --e-dark: var(--uao-dark, #fff);
   --e-glow: var(--uao-glow, #a8001c);
-  --e-oro: #5B6670;
+  --e-oro: #2E4A6B;
   --e-rosa: #fbeff1;
   --e-tinta: #3a0009;
 
