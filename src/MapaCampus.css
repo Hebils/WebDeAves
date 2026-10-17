@@ -200,7 +200,7 @@
 }
 
 .mapa-btn {
-    background: var(--a-oro, #4B5B3E);
+    background: var(--a-oro, #97e189);
     color: var(--a-dark, #5e000e);
     box-shadow: 0 3px 0 var(--a-dark, #5e000e);
 }
