@@ -56,7 +56,7 @@ export const AVES = [
       'Frecuenta lugares abiertos, pueblos y ciudades, y a menudo anda en bandadas.',
     lat: null, lng: null, radio: 25,
     canto: './Cantos/torcaza.mp3',
-    modelo: './Modelos/buho.glb', // PROVISIONAL
+    modelo: './Modelos/torcaza.glb',
     imagen: './imgAves/torcaza.jpg',
     ilustracion: './imgAves/torcaza-ilustracion.png',
     quiz: [
@@ -90,7 +90,7 @@ export const AVES = [
       'Prefiere perchas visibles, cerca de zonas abiertas o de agua, y come peces, insectos, lagartijas y frutas.',
     lat: null, lng: null, radio: 25,
     canto: './Cantos/bichofue.mp3',
-    modelo: './Modelos/buho.glb', // PROVISIONAL
+    modelo: './Modelos/bichofue.glb',
     imagen: './imgAves/bichofue.jpg',
     ilustracion: './imgAves/bichofue-ilustracion.png',
     quiz: [
@@ -124,7 +124,7 @@ export const AVES = [
       'y se percha en los cables de teléfono.',
     lat: null, lng: null, radio: 25,
     canto: './Cantos/azulejo.mp3',
-    modelo: './Modelos/buho.glb', // PROVISIONAL
+    modelo: './Modelos/azulejo.glb',
     imagen: './imgAves/azulejo.jpg',
     ilustracion: './imgAves/azulejo-ilustracion.png',
     quiz: [
@@ -158,7 +158,7 @@ export const AVES = [
       'Vuela con aleteos rápidos y fuertes.',
     lat: null, lng: null, radio: 25,
     canto: './Cantos/gavilan.mp3',
-    modelo: './Modelos/buho.glb', // PROVISIONAL
+    modelo: './Modelos/gavilan.glb',
     imagen: './imgAves/gavilan.jpg',
     ilustracion: './imgAves/gavilan-ilustracion.png',
     quiz: [
