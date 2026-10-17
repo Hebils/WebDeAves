@@ -3,14 +3,29 @@
   --uao-dark: #5e000e;
   --uao-glow: #a8001c;
   --blanco: #ffffff;
-  --acento: #ffd54a;
+  --acento: #5B6670;
   font-family: 'Fredoka', system-ui, 'Segoe UI', Roboto, sans-serif;
   color: var(--blanco);
   background: var(--uao);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
-* { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
-body { overscroll-behavior: none; }
-button { font-family: inherit; }
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+button {
+  font-family: inherit;
+}
