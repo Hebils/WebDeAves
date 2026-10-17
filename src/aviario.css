@@ -15,7 +15,7 @@ body {
 .av {
     --a-uao: var(--uao, #880015);
     --a-dark: var(--uao-dark, #fff);
-    --a-oro: #2E4A6B;
+    --a-oro: #4B5B3E;
     position: fixed;
     inset: 0;
     color: #fff;
